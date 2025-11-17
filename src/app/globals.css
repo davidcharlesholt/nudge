@@ -1,26 +1,78 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Nudge Brand Colors */
+    --background: 210 20% 98%;         /* #F9FAFB */
+    --foreground: 222 47% 11%;         /* #0F172A */
+    --card: 0 0% 100%;                 /* #FFFFFF */
+    --card-foreground: 222 47% 11%;    /* #0F172A */
+    --popover: 0 0% 100%;              /* #FFFFFF */
+    --popover-foreground: 222 47% 11%; /* #0F172A */
+    
+    /* Primary - Deep Navy */
+    --primary: 203 95% 15%;            /* #042C4C */
+    --primary-foreground: 0 0% 100%;   /* #FFFFFF */
+    
+    /* Secondary - Light Gray */
+    --secondary: 220 13% 91%;          /* #E5E7EB */
+    --secondary-foreground: 222 47% 11%; /* #0F172A */
+    
+    /* Muted - Soft Grays */
+    --muted: 220 13% 91%;              /* #E5E7EB */
+    --muted-foreground: 220 9% 46%;    /* #6B7280 */
+    
+    /* Accent - Can use gradient colors for special elements */
+    --accent: 220 13% 91%;             /* #E5E7EB */
+    --accent-foreground: 222 47% 11%;  /* #0F172A */
+    
+    /* Status Colors */
+    --success: 142 71% 37%;            /* #16A34A */
+    --warning: 48 96% 53%;             /* #EAB308 */
+    --destructive: 0 72% 51%;          /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Borders & Inputs */
+    --border: 220 13% 91%;             /* #E5E7EB */
+    --input: 220 13% 91%;              /* #E5E7EB */
+    --ring: 203 95% 15%;               /* #042C4C - matches primary */
+    --radius: 0.5rem;
+  }
+
+  /* Dark mode disabled for now - Nudge is light mode only */
+  .dark {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 203 95% 15%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 13% 91%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 220 13% 91%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 220 13% 91%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 203 95% 15%;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
 }
+
