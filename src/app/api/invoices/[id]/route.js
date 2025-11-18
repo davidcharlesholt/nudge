@@ -1,10 +1,20 @@
 import clientPromise from "@/lib/db";
 import { ObjectId } from "mongodb";
-
-const DEMO_USER_ID = "demo-user";
+import { auth } from "@clerk/nextjs/server";
 
 export async function GET(_req, context) {
   try {
+    // Get the current user's ID from Clerk
+    const { userId } = await auth();
+    
+    // Return 401 if no user is authenticated
+    if (!userId) {
+      return Response.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     // Await params in case it's a Promise (Next.js 14/15 compatibility)
     const params = await Promise.resolve(context.params);
     const { id } = params;
@@ -22,7 +32,7 @@ export async function GET(_req, context) {
 
     const invoiceDoc = await db.collection("invoices").findOne({
       _id: new ObjectId(id),
-      userId: DEMO_USER_ID,
+      userId,
     });
 
     if (!invoiceDoc) {
@@ -49,6 +59,17 @@ export async function GET(_req, context) {
 
 export async function PUT(req, context) {
   try {
+    // Get the current user's ID from Clerk
+    const { userId } = await auth();
+    
+    // Return 401 if no user is authenticated
+    if (!userId) {
+      return Response.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     // Await params in case it's a Promise (Next.js 14/15 compatibility)
     const params = await Promise.resolve(context.params);
     const { id } = params;
@@ -65,21 +86,32 @@ export async function PUT(req, context) {
     const {
       clientId,
       amount,
-      currency,
       dueDate,
       status,
       notes,
+      paymentLink,
       emailFlow,
       reminderSchedule,
       templates,
     } = body;
 
     // Validate required fields
-    if (!clientId || !amount || !currency || !dueDate || !status) {
+    if (!clientId || !amount || !dueDate || !status || !paymentLink) {
       return Response.json(
         {
           ok: false,
-          error: "clientId, amount, currency, dueDate, and status are required.",
+          error: "clientId, amount, dueDate, status, and paymentLink are required.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate paymentLink is a valid URL
+    if (typeof paymentLink !== "string" || paymentLink.trim() === "") {
+      return Response.json(
+        {
+          ok: false,
+          error: "paymentLink must be a non-empty string.",
         },
         { status: 400 }
       );
@@ -106,10 +138,10 @@ export async function PUT(req, context) {
     const updateDoc = {
       clientId: new ObjectId(clientId),
       amountCents,
-      currency: currency.trim(),
       dueDate: dueDate.trim(),
       status: status.trim(),
       notes: notes?.trim() || "",
+      paymentLink: paymentLink.trim(),
       // Email configuration
       emailFlow: emailFlow || "custom",
       reminderSchedule: reminderSchedule || "standard",
@@ -118,7 +150,7 @@ export async function PUT(req, context) {
     };
 
     const result = await db.collection("invoices").updateOne(
-      { _id: new ObjectId(id), userId: DEMO_USER_ID },
+      { _id: new ObjectId(id), userId },
       { $set: updateDoc }
     );
 
@@ -146,6 +178,17 @@ export async function PUT(req, context) {
 
 export async function DELETE(_req, context) {
   try {
+    // Get the current user's ID from Clerk
+    const { userId } = await auth();
+    
+    // Return 401 if no user is authenticated
+    if (!userId) {
+      return Response.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     // Await params in case it's a Promise (Next.js 14/15 compatibility)
     const params = await Promise.resolve(context.params);
     const { id } = params;
@@ -163,7 +206,7 @@ export async function DELETE(_req, context) {
 
     const result = await db.collection("invoices").deleteOne({
       _id: new ObjectId(id),
-      userId: DEMO_USER_ID,
+      userId,
     });
 
     if (result.deletedCount === 0) {

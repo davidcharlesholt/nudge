@@ -1,8 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Card } from "@/components/ui/card";
+import { requireWorkspace } from "@/lib/workspace";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -33,16 +41,40 @@ import { useToast } from "@/components/ui/use-toast";
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 
 export default function ClientsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState(null);
+  const [showSuccessCard, setShowSuccessCard] = useState(false);
+  const [createdClientId, setCreatedClientId] = useState(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchClients();
+    checkWorkspaceAndFetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    // Check if we should show the success card
+    const created = searchParams.get("created");
+    const clientId = searchParams.get("clientId");
+
+    if (created === "true" && clientId) {
+      setShowSuccessCard(true);
+      setCreatedClientId(clientId);
+      // Remove query params from URL without reloading
+      router.replace("/clients", { scroll: false });
+    }
+  }, [searchParams, router]);
+
+  async function checkWorkspaceAndFetch() {
+    const workspace = await requireWorkspace(router);
+    if (!workspace) return; // Will redirect to onboarding
+    fetchClients();
+  }
 
   async function fetchClients() {
     try {
@@ -108,8 +140,48 @@ export default function ClientsPage() {
     window.location.href = `/clients/${clientId}/edit`;
   }
 
+  function handleDismissSuccessCard() {
+    setShowSuccessCard(false);
+    setCreatedClientId(null);
+  }
+
+  function handleCreateInvoice() {
+    if (createdClientId) {
+      router.push(`/invoices/new?clientId=${createdClientId}`);
+    } else {
+      router.push("/invoices/new");
+    }
+  }
+
   return (
     <div>
+      {/* Success Card Overlay */}
+      {showSuccessCard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl">Client added</CardTitle>
+              <CardDescription>
+                You can create their first invoice now or do it later.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col gap-3">
+                <Button onClick={handleCreateInvoice} size="lg">
+                  Create first invoice
+                </Button>
+                <Button
+                  onClick={handleDismissSuccessCard}
+                  variant="outline"
+                  size="lg"
+                >
+                  Skip for now
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
       {/* Page Header */}
       <div className="flex justify-between items-center mb-6">
         <div>

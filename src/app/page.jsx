@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Card,
@@ -10,17 +11,36 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Plus } from "lucide-react";
+import { requireWorkspace } from "@/lib/workspace";
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [clients, setClients] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dateFilter, setDateFilter] = useState(30); // Default to last 30 days
+  const [workspace, setWorkspace] = useState(null);
 
   useEffect(() => {
-    fetchData();
+    checkWorkspaceAndFetchData();
   }, []);
+
+  async function checkWorkspaceAndFetchData() {
+    // Check if user has completed onboarding
+    const ws = await requireWorkspace(router);
+    if (!ws) return; // Will redirect to onboarding
+    
+    setWorkspace(ws);
+    fetchData();
+  }
 
   async function fetchData() {
     try {
@@ -81,18 +101,44 @@ export default function DashboardPage() {
   }
 
   // Helper to format amount in dollars
-  function formatAmount(amountCents, currency) {
+  function formatAmount(amountCents) {
     const dollars = (amountCents / 100).toFixed(2);
-    return `${currency} $${dollars}`;
+    return `$${dollars}`;
   }
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Overview of your clients and invoices
-        </p>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Overview of your clients and invoices
+          </p>
+        </div>
+        
+        {/* + New Button with Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button 
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              New
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem asChild>
+              <Link href="/clients/new" className="cursor-pointer">
+                New Client
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/invoices/new" className="cursor-pointer">
+                New Invoice
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Loading state */}
@@ -222,10 +268,7 @@ export default function DashboardPage() {
                             {getClientName(invoice.clientId)}
                           </td>
                           <td className="p-3 text-sm font-medium">
-                            {formatAmount(
-                              invoice.amountCents,
-                              invoice.currency
-                            )}
+                            {formatAmount(invoice.amountCents)}
                           </td>
                           <td className="p-3">
                             <span
@@ -256,32 +299,20 @@ export default function DashboardPage() {
               </Card>
             )}
 
-            {/* View All Invoices Button */}
-            <div className="flex justify-end mt-4">
-              <Button asChild>
-                <Link href="/invoices">View All Invoices</Link>
-              </Button>
-            </div>
+          {/* View All Invoices Button */}
+          <div className="flex justify-end mt-4">
+            <Button asChild>
+              <Link href="/invoices">View All Invoices</Link>
+            </Button>
           </div>
+        </div>
 
-          {/* Optional: Quick Summary */}
-          {totalClients === 0 && totalInvoices === 0 && (
-            <Card className="mt-8">
-              <CardHeader>
-                <CardTitle className="text-xl">Welcome to Nudge!</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <p className="text-muted-foreground">
-                  Get started by adding your first client, then create invoices
-                  for them.
-                </p>
-                <p className="text-muted-foreground">
-                  Nudge will help you track invoice statuses and send friendly
-                  reminders when payments are overdue.
-                </p>
-              </CardContent>
-            </Card>
-          )}
+        {/* TODO: Add Quick Start section after onboarding
+            When user completes onboarding, show:
+            - "+ Add new client" button
+            - "+ Create first invoice" button
+            Only show if totalClients === 0 && totalInvoices === 0
+        */}
         </>
       )}
     </div>

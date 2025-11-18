@@ -1,14 +1,24 @@
 import clientPromise from "@/lib/db";
-
-const DEMO_USER_ID = "demo-user";
+import { auth } from "@clerk/nextjs/server";
 
 export async function GET() {
   try {
+    // Get the current user's ID from Clerk
+    const { userId } = await auth();
+    
+    // Return 401 if no user is authenticated
+    if (!userId) {
+      return Response.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const client = await clientPromise;
     const db = client.db("nudge");
     const clients = await db
       .collection("clients")
-      .find({ userId: DEMO_USER_ID })
+      .find({ userId })
       .sort({ createdAt: -1 })
       .toArray();
 
@@ -28,6 +38,17 @@ export async function GET() {
 
 export async function POST(req) {
   try {
+    // Get the current user's ID from Clerk
+    const { userId } = await auth();
+    
+    // Return 401 if no user is authenticated
+    if (!userId) {
+      return Response.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { name, email, companyName } = body;
 
@@ -44,7 +65,7 @@ export async function POST(req) {
 
     const now = new Date();
     const doc = {
-      userId: DEMO_USER_ID,
+      userId,
       name: name.trim(),
       email: email.trim(),
       companyName: companyName?.trim() || "",

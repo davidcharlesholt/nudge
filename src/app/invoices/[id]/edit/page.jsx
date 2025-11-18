@@ -55,7 +55,7 @@ export default function EditInvoicePage() {
   // Form state
   const [clientId, setClientId] = useState("");
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState("USD");
+  const [paymentLink, setPaymentLink] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [status, setStatus] = useState("draft");
   const [submitting, setSubmitting] = useState(false);
@@ -135,7 +135,7 @@ export default function EditInvoicePage() {
       const invoice = invoiceData.invoice;
       setClientId(invoice.clientId || "");
       setAmount((invoice.amountCents / 100).toFixed(2));
-      setCurrency(invoice.currency || "USD");
+      setPaymentLink(invoice.paymentLink || "");
       setDueDate(invoice.dueDate || "");
       setStatus(invoice.status || "draft");
 
@@ -377,7 +377,7 @@ export default function EditInvoicePage() {
         body: JSON.stringify({
           clientId,
           amount: parseFloat(amount),
-          currency,
+          paymentLink,
           dueDate,
           status,
           notes: "",
@@ -492,19 +492,23 @@ export default function EditInvoicePage() {
                 />
               </div>
 
-              {/* Currency Field */}
+              {/* Payment Link Field */}
               <div className="space-y-2">
-                <Label htmlFor="currency">
-                  Currency <span className="text-destructive">*</span>
+                <Label htmlFor="paymentLink">
+                  Payment link <span className="text-destructive">*</span>
                 </Label>
                 <Input
-                  id="currency"
-                  type="text"
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
+                  id="paymentLink"
+                  type="url"
+                  value={paymentLink}
+                  onChange={(e) => setPaymentLink(e.target.value)}
                   required
-                  placeholder="USD"
+                  placeholder="https://…"
                 />
+                <p className="text-xs text-muted-foreground">
+                  We&apos;ll insert this link into your invoice emails so
+                  clients can pay quickly.
+                </p>
               </div>
 
               {/* Due Date Field */}
@@ -674,7 +678,7 @@ export default function EditInvoicePage() {
                       {"{"}clientName{"}"}, {"{"}
                       {"{"}amount{"}"}, {"{"}
                       {"{"}dueDate{"}"}, and {"{"}
-                      {"{"}invoiceNumber{"}"} placeholders.
+                      {"{"}paymentLink{"}"} placeholders.
                     </p>
                   </div>
 

@@ -1,15 +1,25 @@
 import clientPromise from "@/lib/db";
 import { ObjectId } from "mongodb";
-
-const DEMO_USER_ID = "demo-user";
+import { auth } from "@clerk/nextjs/server";
 
 export async function GET() {
   try {
+    // Get the current user's ID from Clerk
+    const { userId } = await auth();
+
+    // Return 401 if no user is authenticated
+    if (!userId) {
+      return Response.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB || "nudge");
     const invoices = await db
       .collection("invoices")
-      .find({ userId: DEMO_USER_ID })
+      .find({ userId })
       .sort({ createdAt: -1 })
       .toArray();
 
@@ -30,26 +40,48 @@ export async function GET() {
 
 export async function POST(req) {
   try {
+    // Get the current user's ID from Clerk
+    const { userId } = await auth();
+
+    // Return 401 if no user is authenticated
+    if (!userId) {
+      return Response.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const {
       clientId,
       amount,
-      currency,
       dueDate,
       status,
       notes,
+      paymentLink,
       emailFlow,
       reminderSchedule,
       templates,
     } = body;
 
     // Validate required fields
-    if (!clientId || !amount || !currency || !dueDate || !status) {
+    if (!clientId || !amount || !dueDate || !status || !paymentLink) {
       return Response.json(
         {
           ok: false,
           error:
-            "clientId, amount, currency, dueDate, and status are required.",
+            "clientId, amount, dueDate, status, and paymentLink are required.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate paymentLink is a valid URL
+    if (typeof paymentLink !== "string" || paymentLink.trim() === "") {
+      return Response.json(
+        {
+          ok: false,
+          error: "paymentLink must be a non-empty string.",
         },
         { status: 400 }
       );
@@ -75,13 +107,13 @@ export async function POST(req) {
 
     const now = new Date();
     const doc = {
-      userId: DEMO_USER_ID,
+      userId,
       clientId: new ObjectId(clientId),
       amountCents,
-      currency: currency.trim(),
       dueDate: dueDate.trim(),
       status: status.trim(),
       notes: notes?.trim() || "",
+      paymentLink: paymentLink.trim(),
       // Email configuration
       emailFlow: emailFlow || "custom",
       reminderSchedule: reminderSchedule || "standard",

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -44,6 +44,7 @@ import {
 
 export default function NewInvoicePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +53,7 @@ export default function NewInvoicePage() {
   // Form state
   const [clientId, setClientId] = useState("");
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState("USD");
+  const [paymentLink, setPaymentLink] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [status, setStatus] = useState("draft");
   const [submitting, setSubmitting] = useState(false);
@@ -102,42 +103,48 @@ export default function NewInvoicePage() {
 
   // Fetch clients on mount
   useEffect(() => {
-    fetchClients();
-    loadSavedFlows();
-  }, []);
+    async function fetchClientsAndInit() {
+      try {
+        setLoading(true);
+        setError(null);
 
-  async function fetchClients() {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const res = await fetch("/api/clients");
-      const data = await res.json();
-
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || "Failed to fetch clients");
-      }
-
-      setClients(data.clients || []);
-    } catch (err) {
-      console.error("Error fetching clients:", err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadSavedFlows() {
-    try {
-      const res = await fetch("/api/email-flows");
-      if (res.ok) {
+        const res = await fetch("/api/clients");
         const data = await res.json();
-        setSavedFlows(data.flows || []);
+
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || "Failed to fetch clients");
+        }
+
+        setClients(data.clients || []);
+
+        // Pre-select client from query parameter if provided
+        const preselectedClientId = searchParams.get("clientId");
+        if (preselectedClientId) {
+          setClientId(preselectedClientId);
+        }
+      } catch (err) {
+        console.error("Error fetching clients:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Error loading flows:", err);
     }
-  }
+
+    async function loadSavedFlows() {
+      try {
+        const res = await fetch("/api/email-flows");
+        if (res.ok) {
+          const data = await res.json();
+          setSavedFlows(data.flows || []);
+        }
+      } catch (err) {
+        console.error("Error loading flows:", err);
+      }
+    }
+
+    fetchClientsAndInit();
+    loadSavedFlows();
+  }, [searchParams]);
 
   // Handle schedule change
   function handleScheduleChange(newSchedule) {
@@ -339,7 +346,7 @@ export default function NewInvoicePage() {
         body: JSON.stringify({
           clientId,
           amount: parseFloat(amount),
-          currency,
+          paymentLink,
           dueDate,
           status,
           notes: "",
@@ -466,19 +473,23 @@ export default function NewInvoicePage() {
                 />
               </div>
 
-              {/* Currency Field */}
+              {/* Payment Link Field */}
               <div className="space-y-2">
-                <Label htmlFor="currency">
-                  Currency <span className="text-destructive">*</span>
+                <Label htmlFor="paymentLink">
+                  Payment link <span className="text-destructive">*</span>
                 </Label>
                 <Input
-                  id="currency"
-                  type="text"
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
+                  id="paymentLink"
+                  type="url"
+                  value={paymentLink}
+                  onChange={(e) => setPaymentLink(e.target.value)}
                   required
-                  placeholder="USD"
+                  placeholder="https://…"
                 />
+                <p className="text-xs text-muted-foreground">
+                  We&apos;ll insert this link into your invoice emails so
+                  clients can pay quickly.
+                </p>
               </div>
 
               {/* Due Date Field */}
@@ -648,7 +659,7 @@ export default function NewInvoicePage() {
                       {"{"}clientName{"}"}, {"{"}
                       {"{"}amount{"}"}, {"{"}
                       {"{"}dueDate{"}"}, and {"{"}
-                      {"{"}invoiceNumber{"}"} placeholders.
+                      {"{"}paymentLink{"}"} placeholders.
                     </p>
                   </div>
 

@@ -1,10 +1,20 @@
 import clientPromise from "@/lib/db";
 import { ObjectId } from "mongodb";
-
-const DEMO_USER_ID = "demo-user";
+import { auth } from "@clerk/nextjs/server";
 
 export async function GET(_req, context) {
   try {
+    // Get the current user's ID from Clerk
+    const { userId } = await auth();
+    
+    // Return 401 if no user is authenticated
+    if (!userId) {
+      return Response.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     // Await params in case it's a Promise (Next.js 14/15 compatibility)
     const params = await Promise.resolve(context.params);
     const { id } = params;
@@ -22,7 +32,7 @@ export async function GET(_req, context) {
 
     const clientDoc = await db.collection("clients").findOne({
       _id: new ObjectId(id),
-      userId: DEMO_USER_ID,
+      userId,
     });
 
     if (!clientDoc) {
@@ -48,6 +58,17 @@ export async function GET(_req, context) {
 
 export async function PUT(req, context) {
   try {
+    // Get the current user's ID from Clerk
+    const { userId } = await auth();
+    
+    // Return 401 if no user is authenticated
+    if (!userId) {
+      return Response.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     // Await params in case it's a Promise (Next.js 14/15 compatibility)
     const params = await Promise.resolve(context.params);
     const { id } = params;
@@ -82,7 +103,7 @@ export async function PUT(req, context) {
     };
 
     const result = await db.collection("clients").updateOne(
-      { _id: new ObjectId(id), userId: DEMO_USER_ID },
+      { _id: new ObjectId(id), userId },
       { $set: updateDoc }
     );
 
@@ -109,6 +130,17 @@ export async function PUT(req, context) {
 
 export async function DELETE(_req, context) {
   try {
+    // Get the current user's ID from Clerk
+    const { userId } = await auth();
+    
+    // Return 401 if no user is authenticated
+    if (!userId) {
+      return Response.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     // Await params in case it's a Promise (Next.js 14/15 compatibility)
     const params = await Promise.resolve(context.params);
     const { id } = params;
@@ -126,7 +158,7 @@ export async function DELETE(_req, context) {
 
     const result = await db.collection("clients").deleteOne({
       _id: new ObjectId(id),
-      userId: DEMO_USER_ID,
+      userId,
     });
 
     if (result.deletedCount === 0) {

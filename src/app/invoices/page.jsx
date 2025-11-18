@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { requireWorkspace } from "@/lib/workspace";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +35,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 
 export default function InvoicesPage() {
+  const router = useRouter();
   const [clients, setClients] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,8 +45,14 @@ export default function InvoicesPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchData();
+    checkWorkspaceAndFetch();
   }, []);
+
+  async function checkWorkspaceAndFetch() {
+    const workspace = await requireWorkspace(router);
+    if (!workspace) return; // Will redirect to onboarding
+    fetchData();
+  }
 
   async function fetchData() {
     try {
@@ -127,9 +136,9 @@ export default function InvoicesPage() {
   }
 
   // Helper to format amount in dollars
-  function formatAmount(amountCents, currency) {
+  function formatAmount(amountCents) {
     const dollars = (amountCents / 100).toFixed(2);
-    return `${currency} $${dollars}`;
+    return `$${dollars}`;
   }
 
   return (
@@ -197,7 +206,7 @@ export default function InvoicesPage() {
                     {getClientName(invoice.clientId)}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {formatAmount(invoice.amountCents, invoice.currency)}
+                    {formatAmount(invoice.amountCents)}
                   </TableCell>
                   <TableCell>
                     <span

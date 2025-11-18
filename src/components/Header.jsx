@@ -1,15 +1,27 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { Settings } from "lucide-react";
+import { UserButton, useUser } from "@clerk/nextjs";
+import { getWorkspace } from "@/lib/workspace";
 
 export default function Header() {
   const pathname = usePathname();
+  const { user, isLoaded } = useUser();
+  const [workspace, setWorkspace] = useState(null);
 
-  // TODO: Replace with actual user data from auth context
-  const firstName = "User";
+  useEffect(() => {
+    async function loadWorkspace() {
+      if (isLoaded && user) {
+        const ws = await getWorkspace();
+        setWorkspace(ws);
+      }
+    }
+    loadWorkspace();
+  }, [isLoaded, user]);
 
   const isActive = (path) => {
     if (path === "/") {
@@ -23,6 +35,10 @@ export default function Header() {
     { href: "/clients", label: "Clients" },
     { href: "/invoices", label: "Invoices" },
   ];
+
+  // Check if user is signed in
+  const isSignedIn = isLoaded && user;
+  const workspaceName = workspace?.workspaceName || null;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
@@ -62,19 +78,37 @@ export default function Header() {
             ))}
           </nav>
 
-          {/* Right: Welcome Message + Settings */}
+          {/* Right: Workspace Name + Settings + User Button */}
           <div className="flex items-center justify-end gap-3">
-            <span className="hidden text-sm text-muted-foreground sm:inline">
-              Welcome back, <span className="font-medium text-foreground">{firstName}</span>.
-            </span>
-            <Link
-              href="/settings"
-              className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              title="Settings"
-            >
-              <Settings className="h-5 w-5" />
-              <span className="sr-only">Settings</span>
-            </Link>
+            {isSignedIn ? (
+              <>
+                {workspaceName && (
+                  <span className="hidden text-sm font-medium text-foreground sm:inline">
+                    {workspaceName}
+                  </span>
+                )}
+                <Link
+                  href="/settings"
+                  className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  title="Settings"
+                >
+                  <Settings className="h-5 w-5" />
+                  <span className="sr-only">Settings</span>
+                </Link>
+                <UserButton
+                  appearance={{
+                    elements: {
+                      avatarBox: "h-9 w-9",
+                      userButtonPopoverCard: "shadow-lg border border-border",
+                    },
+                  }}
+                />
+              </>
+            ) : (
+              <span className="hidden text-sm text-muted-foreground sm:inline">
+                Welcome to Nudge
+              </span>
+            )}
           </div>
         </div>
       </div>

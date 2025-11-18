@@ -7,12 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
 import { ArrowLeft } from "lucide-react";
 
 export default function NewClientPage() {
   const router = useRouter();
-  const { toast } = useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -37,20 +35,13 @@ export default function NewClientPage() {
         throw new Error(data.error || "Failed to create client");
       }
 
-      toast({
-        title: "Client created",
-        description: `${name} has been added successfully.`,
-      });
+      const newClientId = data.client.id || data.client._id;
 
-      // Redirect back to clients list on success
-      router.push("/clients");
+      // Redirect back to clients list with query params to show success card
+      router.push(`/clients?created=true&clientId=${newClientId}`);
     } catch (err) {
       console.error("Error creating client:", err);
-      toast({
-        variant: "destructive",
-        title: "Failed to create client",
-        description: err.message,
-      });
+      setError(err.message);
       setSubmitting(false);
     }
   }
