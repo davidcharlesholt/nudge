@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Plus, X } from "lucide-react";
 
 export default function EditClientPage() {
   const params = useParams();
@@ -20,9 +20,11 @@ export default function EditClientPage() {
   const [error, setError] = useState(null);
 
   // Form state
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [additionalEmails, setAdditionalEmails] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
 
@@ -45,15 +47,31 @@ export default function EditClientPage() {
       }
 
       // Pre-fill form
-      setName(data.client.name || "");
+      setFirstName(data.client.firstName || "");
+      setLastName(data.client.lastName || "");
       setEmail(data.client.email || "");
       setCompanyName(data.client.companyName || "");
+      setAdditionalEmails(data.client.additionalEmails || []);
     } catch (err) {
       console.error("Error fetching client:", err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  }
+
+  function addAdditionalEmail() {
+    setAdditionalEmails([...additionalEmails, ""]);
+  }
+
+  function removeAdditionalEmail(index) {
+    setAdditionalEmails(additionalEmails.filter((_, i) => i !== index));
+  }
+
+  function updateAdditionalEmail(index, value) {
+    const updated = [...additionalEmails];
+    updated[index] = value;
+    setAdditionalEmails(updated);
   }
 
   async function handleSubmit(e) {
@@ -65,7 +83,7 @@ export default function EditClientPage() {
       const res = await fetch(`/api/clients/${clientId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, companyName }),
+        body: JSON.stringify({ firstName, lastName, email, companyName, additionalEmails }),
       });
 
       const data = await res.json();
@@ -76,7 +94,7 @@ export default function EditClientPage() {
 
       toast({
         title: "Client updated",
-        description: `${name} has been updated successfully.`,
+        description: `${firstName} ${lastName}`.trim() + " has been updated successfully.",
       });
 
       // Redirect back to clients list
@@ -133,18 +151,30 @@ export default function EditClientPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Name Field */}
+              {/* First Name Field */}
               <div className="space-y-2">
-                <Label htmlFor="name">
-                  Name <span className="text-destructive">*</span>
+                <Label htmlFor="firstName">
+                  First Name <span className="text-destructive">*</span>
                 </Label>
                 <Input
-                  id="name"
+                  id="firstName"
                   type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
                   required
-                  placeholder="John Doe"
+                  placeholder="John"
+                />
+              </div>
+
+              {/* Last Name Field */}
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Doe"
                 />
               </div>
 
@@ -161,6 +191,37 @@ export default function EditClientPage() {
                   required
                   placeholder="john@example.com"
                 />
+              </div>
+
+              {/* Additional Emails */}
+              <div className="space-y-2">
+                {additionalEmails.map((additionalEmail, index) => (
+                  <div key={index} className="flex gap-2">
+                    <Input
+                      type="email"
+                      value={additionalEmail}
+                      onChange={(e) => updateAdditionalEmail(index, e.target.value)}
+                      placeholder="additional@example.com"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeAdditionalEmail(index)}
+                      className="shrink-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={addAdditionalEmail}
+                  className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add another email
+                </button>
               </div>
 
               {/* Company Name Field */}

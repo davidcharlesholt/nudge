@@ -97,7 +97,7 @@ export default function DashboardPage() {
   // Helper to get client name by ID
   function getClientName(clientId) {
     const client = clients.find((c) => c.id === clientId);
-    return client ? client.name : "Unknown";
+    return client ? client.fullName : "Unknown";
   }
 
   // Helper to format amount in dollars

@@ -46,6 +46,7 @@ export default function InvoicesPage() {
 
   useEffect(() => {
     checkWorkspaceAndFetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function checkWorkspaceAndFetch() {
@@ -106,13 +107,15 @@ export default function InvoicesPage() {
       }
 
       // Remove from local state
-      setInvoices((prev) => prev.filter((inv) => inv.id !== invoiceToDelete.id));
-      
+      setInvoices((prev) =>
+        prev.filter((inv) => inv.id !== invoiceToDelete.id)
+      );
+
       toast({
         title: "Invoice deleted",
         description: `Invoice has been removed successfully.`,
       });
-      
+
       setDeleteDialogOpen(false);
       setInvoiceToDelete(null);
     } catch (err) {
@@ -132,7 +135,7 @@ export default function InvoicesPage() {
   // Helper to get client name by ID
   function getClientName(clientId) {
     const client = clients.find((c) => c.id === clientId);
-    return client ? client.name : "Unknown";
+    return client ? client.fullName : "Unknown";
   }
 
   // Helper to format amount in dollars
@@ -146,12 +149,17 @@ export default function InvoicesPage() {
       {/* Page Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">All Invoices</h1>
+          <h1 className="text-2xl font-semibold text-foreground">
+            All Invoices
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Manage invoices and track payments
           </p>
         </div>
-        <Button asChild>
+        <Button
+          asChild
+          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
+        >
           <Link href="/invoices/new">Create Invoice</Link>
         </Button>
       </div>
@@ -177,7 +185,10 @@ export default function InvoicesPage() {
             <p className="text-muted-foreground text-center mb-4">
               No invoices yet. Create your first invoice to get started!
             </p>
-            <Button asChild>
+            <Button
+              asChild
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
+            >
               <Link href="/invoices/new">Create Your First Invoice</Link>
             </Button>
           </div>
@@ -270,8 +281,10 @@ export default function InvoicesPage() {
             <AlertDialogTitle>Delete Invoice?</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete this invoice for{" "}
-              <strong>{invoiceToDelete && getClientName(invoiceToDelete.clientId)}</strong>?
-              This action cannot be undone.
+              <strong>
+                {invoiceToDelete && getClientName(invoiceToDelete.clientId)}
+              </strong>
+              ? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

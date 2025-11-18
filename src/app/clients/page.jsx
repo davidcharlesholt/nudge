@@ -192,7 +192,10 @@ export default function ClientsPage() {
             Manage your client contacts
           </p>
         </div>
-        <Button asChild>
+        <Button
+          asChild
+          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
+        >
           <Link href="/clients/new">Add New Client</Link>
         </Button>
       </div>
@@ -242,7 +245,9 @@ export default function ClientsPage() {
             <TableBody>
               {clients.map((client) => (
                 <TableRow key={client.id}>
-                  <TableCell className="font-medium">{client.name}</TableCell>
+                  <TableCell className="font-medium">
+                    {client.fullName}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {client.email}
                   </TableCell>

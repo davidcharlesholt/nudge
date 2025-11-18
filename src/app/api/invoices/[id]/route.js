@@ -90,6 +90,7 @@ export async function PUT(req, context) {
       status,
       notes,
       paymentLink,
+      ccEmails,
       emailFlow,
       reminderSchedule,
       templates,
@@ -142,6 +143,9 @@ export async function PUT(req, context) {
       status: status.trim(),
       notes: notes?.trim() || "",
       paymentLink: paymentLink.trim(),
+      ccEmails: Array.isArray(ccEmails) 
+        ? ccEmails.filter(e => e && e.trim()).map(e => e.trim())
+        : [],
       // Email configuration
       emailFlow: emailFlow || "custom",
       reminderSchedule: reminderSchedule || "standard",

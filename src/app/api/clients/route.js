@@ -50,12 +50,12 @@ export async function POST(req) {
     }
 
     const body = await req.json();
-    const { name, email, companyName } = body;
+    const { firstName, lastName, email, companyName, additionalEmails } = body;
 
     // Validate required fields
-    if (!name || !email) {
+    if (!firstName || !email) {
       return Response.json(
-        { ok: false, error: "Name and email are required." },
+        { ok: false, error: "First name and email are required." },
         { status: 400 }
       );
     }
@@ -63,12 +63,21 @@ export async function POST(req) {
     const client = await clientPromise;
     const db = client.db("nudge");
 
+    const trimmedFirstName = firstName.trim();
+    const trimmedLastName = lastName?.trim() || "";
+    const fullName = `${trimmedFirstName} ${trimmedLastName}`.trim();
+
     const now = new Date();
     const doc = {
       userId,
-      name: name.trim(),
+      firstName: trimmedFirstName,
+      lastName: trimmedLastName,
+      fullName,
       email: email.trim(),
       companyName: companyName?.trim() || "",
+      additionalEmails: Array.isArray(additionalEmails) 
+        ? additionalEmails.filter(e => e && e.trim()).map(e => e.trim())
+        : [],
       createdAt: now,
       updatedAt: now,
     };

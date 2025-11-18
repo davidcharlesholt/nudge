@@ -31,7 +31,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, Sparkles, Undo2, Check } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Sparkles, Undo2, Check, Plus, X } from "lucide-react";
 import {
   REMINDER_SCHEDULES,
   TONE_OPTIONS,
@@ -49,6 +50,7 @@ export default function EditInvoicePage() {
   const invoiceId = params.id;
 
   const [clients, setClients] = useState([]);
+  const [workspace, setWorkspace] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -58,7 +60,9 @@ export default function EditInvoicePage() {
   const [paymentLink, setPaymentLink] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [status, setStatus] = useState("draft");
+  const [ccEmails, setCcEmails] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [sending, setSending] = useState(false);
   const [formError, setFormError] = useState(null);
 
   // Email flow state
@@ -91,6 +95,8 @@ export default function EditInvoicePage() {
   const [pendingFlow, setPendingFlow] = useState(null);
   const [showSaveFlowDialog, setShowSaveFlowDialog] = useState(false);
   const [flowName, setFlowName] = useState("");
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewTab, setPreviewTab] = useState("initial");
 
   // Load editor with selected template
   useEffect(() => {
@@ -102,6 +108,20 @@ export default function EditInvoicePage() {
       setAiRewritten(false);
     }
   }, [selectedTemplateId, templates]);
+
+  // Auto-populate CC emails when client changes
+  useEffect(() => {
+    if (clientId && clients.length > 0) {
+      const selectedClient = clients.find((c) => c.id === clientId);
+      if (selectedClient && selectedClient.additionalEmails) {
+        // Only auto-populate if ccEmails is currently empty
+        // to avoid overwriting user changes
+        if (ccEmails.length === 0) {
+          setCcEmails(selectedClient.additionalEmails);
+        }
+      }
+    }
+  }, [clientId, clients, ccEmails.length]);
 
   // Fetch invoice and clients data on mount
   useEffect(() => {
@@ -115,13 +135,15 @@ export default function EditInvoicePage() {
       setLoading(true);
       setError(null);
 
-      const [invoiceRes, clientsRes] = await Promise.all([
+      const [invoiceRes, clientsRes, workspaceRes] = await Promise.all([
         fetch(`/api/invoices/${invoiceId}`),
         fetch("/api/clients"),
+        fetch("/api/workspace"),
       ]);
 
       const invoiceData = await invoiceRes.json();
       const clientsData = await clientsRes.json();
+      const workspaceData = await workspaceRes.json();
 
       if (!invoiceRes.ok || !invoiceData.ok) {
         throw new Error(invoiceData.error || "Failed to fetch invoice");
@@ -131,6 +153,10 @@ export default function EditInvoicePage() {
         throw new Error(clientsData.error || "Failed to fetch clients");
       }
 
+      if (workspaceRes.ok && workspaceData.ok) {
+        setWorkspace(workspaceData.workspace);
+      }
+
       // Pre-fill form with invoice data
       const invoice = invoiceData.invoice;
       setClientId(invoice.clientId || "");
@@ -138,6 +164,7 @@ export default function EditInvoicePage() {
       setPaymentLink(invoice.paymentLink || "");
       setDueDate(invoice.dueDate || "");
       setStatus(invoice.status || "draft");
+      setCcEmails(invoice.ccEmails || []);
 
       // Pre-fill email configuration
       setCurrentFlow(invoice.emailFlow || "custom");
@@ -365,6 +392,82 @@ export default function EditInvoicePage() {
     }
   }
 
+  function addCcEmail() {
+    setCcEmails([...ccEmails, ""]);
+  }
+
+  function removeCcEmail(index) {
+    setCcEmails(ccEmails.filter((_, i) => i !== index));
+  }
+
+  function updateCcEmail(index, value) {
+    const updated = [...ccEmails];
+    updated[index] = value;
+    setCcEmails(updated);
+  }
+
+  function handlePreviewAndSend() {
+    setShowPreviewModal(true);
+    setPreviewTab("initial");
+  }
+
+  async function handleActualSend() {
+    setShowPreviewModal(false);
+    setSending(true);
+    setFormError(null);
+
+    try {
+      const res = await fetch(`/api/invoices/${invoiceId}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Failed to send invoice");
+      }
+
+      // Update local status
+      setStatus("sent");
+
+      toast({
+        title: "Invoice sent",
+        description: "Invoice has been sent successfully.",
+      });
+
+      router.push("/invoices");
+    } catch (err) {
+      console.error("Error sending invoice:", err);
+      toast({
+        variant: "destructive",
+        title: "Failed to send invoice",
+        description: err.message,
+      });
+      setSending(false);
+    }
+  }
+
+  // Helper to replace placeholders in email templates
+  function replacePlaceholders(text, clientData, workspaceData) {
+    if (!text) return "";
+
+    const formattedAmount = `$${parseFloat(amount || 0).toFixed(2)}`;
+    const dueDateObj = new Date(dueDate);
+    const dayOfWeek = dueDateObj.toLocaleDateString("en-US", {
+      weekday: "long",
+    });
+
+    return text
+      .replace(/\{\{clientName\}\}/g, clientData?.fullName || "")
+      .replace(/\{\{clientFirstName\}\}/g, clientData?.firstName || "")
+      .replace(/\{\{amount\}\}/g, formattedAmount)
+      .replace(/\{\{dueDate\}\}/g, dueDate || "")
+      .replace(/\{\{paymentLink\}\}/g, paymentLink || "")
+      .replace(/\{\{yourName\}\}/g, workspaceData?.displayName || "")
+      .replace(/\{\{dayOfWeek\}\}/g, dayOfWeek);
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setFormError(null);
@@ -381,6 +484,7 @@ export default function EditInvoicePage() {
           dueDate,
           status,
           notes: "",
+          ccEmails,
           // Email configuration
           emailFlow: currentFlow,
           reminderSchedule,
@@ -467,12 +571,59 @@ export default function EditInvoicePage() {
                   <SelectContent>
                     {clients.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
-                        {client.name} ({client.email})
+                        {client.fullName} ({client.email})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Primary Email & CC Emails */}
+              {clientId && (
+                <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
+                  {/* Primary Email (Read-Only) */}
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Send to:
+                    </p>
+                    <p className="text-sm font-medium">
+                      {clients.find((c) => c.id === clientId)?.email || ""}
+                    </p>
+                  </div>
+
+                  {/* CC Emails */}
+                  <div className="space-y-2">
+                    {ccEmails.map((ccEmail, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Input
+                          type="email"
+                          value={ccEmail}
+                          onChange={(e) => updateCcEmail(index, e.target.value)}
+                          placeholder="cc@example.com"
+                          className="bg-background"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeCcEmail(index)}
+                          className="shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={addCcEmail}
+                      className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add CC email
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Amount Field */}
               <div className="space-y-2">
@@ -579,6 +730,10 @@ export default function EditInvoicePage() {
                     Save current flow
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Finalize all email templates below, then save your flow to
+                  reuse it on future invoices.
+                </p>
               </div>
 
               {/* Reminder Schedule */}
@@ -670,12 +825,13 @@ export default function EditInvoicePage() {
                       id="body"
                       value={editorBody}
                       onChange={(e) => setEditorBody(e.target.value)}
-                      rows={8}
+                      rows={16}
                       placeholder="Type your message here..."
                     />
                     <p className="text-xs text-muted-foreground">
                       Supports {"{"}
                       {"{"}clientName{"}"}, {"{"}
+                      {"{"}clientFirstName{"}"}, {"{"}
                       {"{"}amount{"}"}, {"{"}
                       {"{"}dueDate{"}"}, and {"{"}
                       {"{"}paymentLink{"}"} placeholders.
@@ -746,7 +902,17 @@ export default function EditInvoicePage() {
 
           {/* Action Buttons */}
           <div className="flex gap-3">
-            <Button type="submit" disabled={submitting}>
+            {status === "draft" && (
+              <Button
+                type="button"
+                onClick={handlePreviewAndSend}
+                disabled={submitting || sending}
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
+              >
+                Preview & Send
+              </Button>
+            )}
+            <Button type="submit" disabled={submitting || sending}>
               {submitting ? "Saving..." : "Save Changes"}
             </Button>
             <Button type="button" variant="outline" asChild>
@@ -828,6 +994,149 @@ export default function EditInvoicePage() {
             </Button>
             <Button onClick={handleSaveFlow} disabled={!flowName.trim()}>
               Save flow
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Email Flow Modal */}
+      <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Preview Email Flow</DialogTitle>
+            <DialogDescription>
+              Review all emails that will be sent as part of this invoice. You
+              can switch between tabs to see each message.
+            </DialogDescription>
+          </DialogHeader>
+
+          <Tabs
+            value={previewTab}
+            onValueChange={setPreviewTab}
+            className="flex-1 overflow-hidden flex flex-col"
+          >
+            <TabsList
+              className="grid w-full"
+              style={{
+                gridTemplateColumns: `repeat(${savedTemplates.length}, 1fr)`,
+              }}
+            >
+              {savedTemplates.map((template) => (
+                <TabsTrigger key={template.id} value={template.id}>
+                  {template.id === "initial"
+                    ? "Initial Invoice"
+                    : template.id.replace("reminder", "Reminder ")}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            <div className="flex-1 overflow-y-auto mt-4">
+              {savedTemplates.map((template) => {
+                const selectedClient = clients.find((c) => c.id === clientId);
+                const previewSubject = replacePlaceholders(
+                  template.subject,
+                  selectedClient,
+                  workspace
+                );
+                const previewBody = replacePlaceholders(
+                  template.body,
+                  selectedClient,
+                  workspace
+                );
+
+                // Get timing description
+                const scheduleConfig = REMINDER_SCHEDULES[reminderSchedule];
+                const scheduleTemplate = scheduleConfig.templates.find(
+                  (t) => t.id === template.id
+                );
+                let timingText = "";
+                if (template.id === "initial") {
+                  timingText = "Sent immediately when you click 'Send Invoice'";
+                } else if (scheduleTemplate) {
+                  const offset = scheduleTemplate.offset;
+                  if (offset === 0) {
+                    timingText = "Sent on the due date";
+                  } else if (offset < 0) {
+                    timingText = `Sent ${Math.abs(offset)} day${
+                      Math.abs(offset) > 1 ? "s" : ""
+                    } before due date`;
+                  } else {
+                    timingText = `Sent ${offset} day${
+                      offset > 1 ? "s" : ""
+                    } after due date`;
+                  }
+                }
+
+                return (
+                  <TabsContent
+                    key={template.id}
+                    value={template.id}
+                    className="space-y-4 mt-0"
+                  >
+                    {/* Timing Info */}
+                    {timingText && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-sm text-blue-900">
+                          <strong>When:</strong> {timingText}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Recipients */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">To:</Label>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="inline-flex items-center rounded-md bg-gray-100 px-3 py-1 text-sm">
+                          {selectedClient?.email || "No client selected"}
+                        </span>
+                        {ccEmails.map((cc, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center rounded-md bg-gray-100 px-3 py-1 text-sm"
+                          >
+                            {cc}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Subject */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">Subject:</Label>
+                      <div className="rounded-lg border border-gray-300 bg-gray-50 p-3">
+                        <p className="text-sm">{previewSubject}</p>
+                      </div>
+                    </div>
+
+                    {/* Body */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">Message:</Label>
+                      <div className="rounded-lg border border-gray-300 bg-white p-4 max-h-96 overflow-y-auto">
+                        <div className="text-sm whitespace-pre-wrap">
+                          {previewBody}
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+                );
+              })}
+            </div>
+          </Tabs>
+
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowPreviewModal(false)}
+              className="bg-[#1e293b] hover:bg-[#0f172a] text-white border-0"
+            >
+              Back to Editing
+            </Button>
+            <Button
+              onClick={handleActualSend}
+              disabled={sending}
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
+            >
+              {sending ? "Sending..." : "Send Invoice"}
             </Button>
           </DialogFooter>
         </DialogContent>

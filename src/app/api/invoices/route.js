@@ -1,6 +1,7 @@
 import clientPromise from "@/lib/db";
 import { ObjectId } from "mongodb";
 import { auth } from "@clerk/nextjs/server";
+import { sendInvoiceEmail } from "@/lib/email";
 
 export async function GET() {
   try {
@@ -59,6 +60,7 @@ export async function POST(req) {
       status,
       notes,
       paymentLink,
+      ccEmails,
       emailFlow,
       reminderSchedule,
       templates,
@@ -87,20 +89,20 @@ export async function POST(req) {
       );
     }
 
-    // Validate status enum
-    const validStatuses = ["draft", "sent", "paid", "overdue"];
-    if (!validStatuses.includes(status)) {
+    // Validate status enum (only draft or sent allowed)
+    const normalizedStatus = status.toLowerCase().trim();
+    if (normalizedStatus !== "draft" && normalizedStatus !== "sent") {
       return Response.json(
         {
           ok: false,
-          error: `status must be one of: ${validStatuses.join(", ")}`,
+          error: "status must be either 'draft' or 'sent'",
         },
         { status: 400 }
       );
     }
 
-    const client = await clientPromise;
-    const db = client.db(process.env.MONGODB_DB || "nudge");
+    const dbClient = await clientPromise;
+    const db = dbClient.db(process.env.MONGODB_DB || "nudge");
 
     // Convert amount from dollars to cents
     const amountCents = Math.round(amount * 100);
@@ -111,9 +113,12 @@ export async function POST(req) {
       clientId: new ObjectId(clientId),
       amountCents,
       dueDate: dueDate.trim(),
-      status: status.trim(),
+      status: normalizedStatus,
       notes: notes?.trim() || "",
       paymentLink: paymentLink.trim(),
+      ccEmails: Array.isArray(ccEmails)
+        ? ccEmails.filter((e) => e && e.trim()).map((e) => e.trim())
+        : [],
       // Email configuration
       emailFlow: emailFlow || "custom",
       reminderSchedule: reminderSchedule || "standard",
@@ -122,7 +127,54 @@ export async function POST(req) {
       updatedAt: now,
     };
 
+    // Add sentAt timestamp if status is "sent"
+    if (normalizedStatus === "sent") {
+      doc.sentAt = now;
+    }
+
     const result = await db.collection("invoices").insertOne(doc);
+
+    // If status is "sent", send the invoice email
+    if (normalizedStatus === "sent") {
+      try {
+        // Fetch client data
+        const clientDoc = await db.collection("clients").findOne({
+          _id: new ObjectId(clientId),
+          userId,
+        });
+
+        if (!clientDoc) {
+          throw new Error("Client not found");
+        }
+
+        // Fetch workspace for sender name
+        const workspace = await db.collection("workspaces").findOne({ userId });
+        const yourName = workspace?.displayName || "Nudge";
+
+        // Get initial template
+        const initialTemplate = templates.find((t) => t.id === "initial");
+        if (initialTemplate) {
+          await sendInvoiceEmail({
+            to: clientDoc.email,
+            ccEmails: doc.ccEmails,
+            subject: initialTemplate.subject,
+            body: initialTemplate.body,
+            client: {
+              firstName: clientDoc.firstName,
+              fullName: clientDoc.fullName,
+            },
+            amountCents: doc.amountCents,
+            dueDate: doc.dueDate,
+            paymentLink: doc.paymentLink,
+            yourName,
+          });
+        }
+      } catch (emailError) {
+        console.error("Error sending invoice email:", emailError);
+        // Don't fail the invoice creation if email fails
+        // The invoice is already created at this point
+      }
+    }
 
     return Response.json(
       {

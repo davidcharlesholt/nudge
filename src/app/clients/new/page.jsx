@@ -7,15 +7,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Plus, X } from "lucide-react";
 
 export default function NewClientPage() {
   const router = useRouter();
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [additionalEmails, setAdditionalEmails] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  function addAdditionalEmail() {
+    setAdditionalEmails([...additionalEmails, ""]);
+  }
+
+  function removeAdditionalEmail(index) {
+    setAdditionalEmails(additionalEmails.filter((_, i) => i !== index));
+  }
+
+  function updateAdditionalEmail(index, value) {
+    const updated = [...additionalEmails];
+    updated[index] = value;
+    setAdditionalEmails(updated);
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -26,7 +42,7 @@ export default function NewClientPage() {
       const res = await fetch("/api/clients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, companyName }),
+        body: JSON.stringify({ firstName, lastName, email, companyName, additionalEmails }),
       });
 
       const data = await res.json();
@@ -66,18 +82,30 @@ export default function NewClientPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name Field */}
+            {/* First Name Field */}
             <div className="space-y-2">
-              <Label htmlFor="name">
-                Name <span className="text-destructive">*</span>
+              <Label htmlFor="firstName">
+                First Name <span className="text-destructive">*</span>
               </Label>
               <Input
-                id="name"
+                id="firstName"
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
                 required
-                placeholder="John Doe"
+                placeholder="John"
+              />
+            </div>
+
+            {/* Last Name Field */}
+            <div className="space-y-2">
+              <Label htmlFor="lastName">Last Name</Label>
+              <Input
+                id="lastName"
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Doe"
               />
             </div>
 
@@ -94,6 +122,37 @@ export default function NewClientPage() {
                 required
                 placeholder="john@example.com"
               />
+            </div>
+
+            {/* Additional Emails */}
+            <div className="space-y-2">
+              {additionalEmails.map((additionalEmail, index) => (
+                <div key={index} className="flex gap-2">
+                  <Input
+                    type="email"
+                    value={additionalEmail}
+                    onChange={(e) => updateAdditionalEmail(index, e.target.value)}
+                    placeholder="additional@example.com"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeAdditionalEmail(index)}
+                    className="shrink-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addAdditionalEmail}
+                className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                <Plus className="h-4 w-4" />
+                Add another email
+              </button>
             </div>
 
             {/* Company Name Field */}
@@ -117,7 +176,11 @@ export default function NewClientPage() {
 
             {/* Action Buttons */}
             <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={submitting}>
+              <Button 
+                type="submit" 
+                disabled={submitting}
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
+              >
                 {submitting ? "Adding..." : "Add Client"}
               </Button>
               <Button type="button" variant="outline" asChild>

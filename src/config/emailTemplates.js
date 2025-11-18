@@ -4,7 +4,8 @@
  * Structure: EMAIL_TEMPLATES[tone][templateKey] = { subject, body }
  *
  * Supported placeholders:
- * - {{clientName}}
+ * - {{clientName}} - Client's full name (first + last)
+ * - {{clientFirstName}} - Client's first name only
  * - {{amount}}
  * - {{dueDate}}
  * - {{yourName}}
@@ -17,7 +18,7 @@ export const EMAIL_TEMPLATES = {
   friendly: {
     initial: {
       subject: "Your invoice for {{amount}}",
-      body: `Hi {{clientName}},
+      body: `Hi {{clientFirstName}},
 
 Hope you're doing well!
 
@@ -35,7 +36,7 @@ Thanks again for trusting me with your project!
     },
     reminder1: {
       subject: "Quick heads-up before your invoice is due",
-      body: `Hi {{clientName}},
+      body: `Hi {{clientFirstName}},
 
 Hope your week's going well!
 
@@ -50,7 +51,7 @@ Warmly,
     },
     reminder2: {
       subject: "Just a little reminder 😊",
-      body: `Hi {{clientName}},
+      body: `Hi {{clientFirstName}},
 
 I hope things are going smoothly on your end!
 
@@ -65,7 +66,7 @@ Thanks!
     },
     reminder3: {
       subject: "Your invoice is due today",
-      body: `Hi {{clientName}},
+      body: `Hi {{clientFirstName}},
 
 Happy {{dayOfWeek}}!
 
@@ -80,7 +81,7 @@ All the best,
     },
     reminder4: {
       subject: "Friendly follow-up on your overdue invoice",
-      body: `Hi {{clientName}},
+      body: `Hi {{clientFirstName}},
 
 Hope you're doing well!
 
@@ -99,7 +100,7 @@ Thanks so much,
   professional: {
     initial: {
       subject: "Invoice for {{amount}}",
-      body: `Hi {{clientName}},
+      body: `Hi {{clientFirstName}},
 
 I hope you're doing well. I'm sharing your invoice for {{amount}}, available here whenever you're ready:
 
@@ -114,7 +115,7 @@ Thank you,
     },
     reminder1: {
       subject: "Upcoming invoice due date",
-      body: `Hi {{clientName}},
+      body: `Hi {{clientFirstName}},
 
 I hope your week is going well. This is a courtesy reminder that your invoice for {{amount}} is due on {{dueDate}}.
 
@@ -129,7 +130,7 @@ Thank you,
     },
     reminder2: {
       subject: "Invoice due soon",
-      body: `Hi {{clientName}},
+      body: `Hi {{clientFirstName}},
 
 Just a quick reminder that your invoice for {{amount}} is coming up on {{dueDate}}.
 
@@ -144,7 +145,7 @@ Warm regards,
     },
     reminder3: {
       subject: "Invoice due today",
-      body: `Hi {{clientName}},
+      body: `Hi {{clientFirstName}},
 
 Your invoice for {{amount}} is due today.
 
@@ -159,7 +160,7 @@ Thank you,
     },
     reminder4: {
       subject: "Follow-up on outstanding invoice",
-      body: `Hi {{clientName}},
+      body: `Hi {{clientFirstName}},
 
 I hope you're doing well. I'm following up regarding the invoice for {{amount}}, which was due on {{dueDate}} and appears to still be outstanding.
 
@@ -176,7 +177,7 @@ Best regards,
   firm: {
     initial: {
       subject: "Invoice for {{amount}}",
-      body: `Hi {{clientName}},
+      body: `Hi {{clientFirstName}},
 
 I'm sending over your invoice for {{amount}}. You can review and submit payment at the link below:
 
@@ -191,7 +192,7 @@ Thank you,
     },
     reminder1: {
       subject: "Friendly reminder — upcoming invoice due",
-      body: `Hi {{clientName}},
+      body: `Hi {{clientFirstName}},
 
 This is a quick reminder that the invoice for {{amount}} is due on {{dueDate}}.
 
@@ -206,7 +207,7 @@ Best regards,
     },
     reminder2: {
       subject: "Reminder — invoice due soon",
-      body: `Hi {{clientName}},
+      body: `Hi {{clientFirstName}},
 
 I'm touching base regarding your invoice for {{amount}}, which is due in a few days ({{dueDate}}).
 
@@ -221,7 +222,7 @@ Warm regards,
     },
     reminder3: {
       subject: "Invoice due today",
-      body: `Hi {{clientName}},
+      body: `Hi {{clientFirstName}},
 
 Your invoice for {{amount}} is due today.
 
@@ -235,7 +236,7 @@ Thank you for handling this promptly.
     },
     reminder4: {
       subject: "Follow-up on overdue invoice",
-      body: `Hi {{clientName}},
+      body: `Hi {{clientFirstName}},
 
 I'm following up regarding the invoice for {{amount}}, which was due on {{dueDate}} and currently appears overdue.
 
