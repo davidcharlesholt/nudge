@@ -17,12 +17,20 @@ export async function sendTestEmail(to, fromName) {
   const finalFromName = fromName || fallbackFromName;
   const from = `${finalFromName} <${process.env.RESEND_FROM_EMAIL}>`;
   
-  return resend.emails.send({
+  const res = await resend.emails.send({
     from,
     to,
     subject: "Nudge test email",
     text: "If you're seeing this, Resend is wired up correctly 🎉",
   });
+
+  // Check for Resend error
+  if (res?.error) {
+    console.error("Resend email error:", res.error);
+    throw new Error(res.error.message || "Failed to send email via Resend");
+  }
+
+  return res;
 }
 
 /**
@@ -102,5 +110,14 @@ export async function sendInvoiceEmail({
     emailData.cc = ccEmails.filter((email) => email && email.trim());
   }
 
-  return resend.emails.send(emailData);
+  // Send email and check for errors
+  const res = await resend.emails.send(emailData);
+
+  // Resend SDK doesn't throw on errors - it returns them in res.error
+  if (res?.error) {
+    console.error("Resend email error:", res.error);
+    throw new Error(res.error.message || "Failed to send email via Resend");
+  }
+
+  return res;
 }

@@ -52,6 +52,14 @@ export async function POST(_req, context) {
       );
     }
 
+    // Validate invoice has all required fields to be sent
+    if (!invoice.amountCents || !invoice.dueDate || !invoice.paymentLink) {
+      return Response.json(
+        { ok: false, error: "Invoice is missing required fields (amount, dueDate, or paymentLink). Please edit the invoice first." },
+        { status: 400 }
+      );
+    }
+
     // Fetch client data
     const clientDoc = await db.collection("clients").findOne({
       _id: invoice.clientId,
@@ -101,23 +109,53 @@ export async function POST(_req, context) {
         fromName,
       });
     } catch (emailError) {
-      console.error("Error sending invoice email:", emailError);
+      console.error(
+        `Error sending invoice email for invoice ${id}:`,
+        emailError.name,
+        emailError.message
+      );
+
+      // Update the invoice with the email error details
+      const errorNow = new Date();
+      await db.collection("invoices").updateOne(
+        { _id: new ObjectId(id), userId },
+        {
+          $set: {
+            lastEmailErrorMessage:
+              emailError.message || "Unknown email send error",
+            lastEmailErrorAt: errorNow,
+            lastEmailErrorContext: "manual-send",
+            updatedAt: errorNow,
+          },
+        }
+      );
+
+      // Return error - do NOT update status to "sent" if email failed
       return Response.json(
-        { ok: false, error: "Failed to send email: " + emailError.message },
+        {
+          ok: false,
+          error:
+            "Could not send the email. The invoice remains unsent. Please try again or check the email configuration.",
+          emailError: emailError.message,
+        },
         { status: 500 }
       );
     }
 
     // Update invoice status to "sent" and set sentAt timestamp
+    // Also clear any previous email errors
     const now = new Date();
     await db.collection("invoices").updateOne(
       { _id: new ObjectId(id), userId },
-      { 
-        $set: { 
+      {
+        $set: {
           status: "sent",
           sentAt: now,
           updatedAt: now,
-        } 
+          lastEmailErrorMessage: null,
+          lastEmailErrorAt: null,
+          lastEmailErrorContext: null,
+        },
       }
     );
 
@@ -128,6 +166,9 @@ export async function POST(_req, context) {
         status: "sent",
         sentAt: now,
         updatedAt: now,
+        lastEmailErrorMessage: null,
+        lastEmailErrorAt: null,
+        lastEmailErrorContext: null,
       },
     });
   } catch (error) {

@@ -3,7 +3,6 @@
 // Usage: GET /api/cron/reminders?secret=YOUR_CRON_SECRET
 
 import clientPromise from "@/lib/db";
-import { ObjectId } from "mongodb";
 import { sendInvoiceEmail } from "@/lib/email";
 
 /**
@@ -81,6 +80,42 @@ export async function GET(req) {
         const dueDate = parseYMD(invoice.dueDate);
         const remindersSent = invoice.remindersSent || [];
 
+        // SAFETY GUARD B: Skip very old invoices (older than ~6 months)
+        // This prevents sending reminders for invoices that are likely abandoned or resolved
+        const now = new Date();
+        const invoiceAgeMs = now.getTime() - dueDate.getTime();
+        const sixMonthsMs = 6 * 30 * 24 * 60 * 60 * 1000; // ~6 months in milliseconds
+        if (invoiceAgeMs > sixMonthsMs) {
+          console.log(
+            `Skipping invoice ${invoice._id}: invoice is older than 6 months (due date: ${invoice.dueDate})`
+          );
+          continue;
+        }
+
+        // SAFETY GUARD A: Never send more than 1 reminder per invoice per day
+        // Check if any reminder was already sent today for this invoice
+        // This prevents duplicate sends if the cron runs multiple times or if there's a bug
+        const hasReminderSentToday = remindersSent.some((sent) => {
+          if (!sent.sentAt) return false;
+          // Handle both Date objects and ISO strings
+          const sentDate =
+            sent.sentAt instanceof Date
+              ? sent.sentAt
+              : typeof sent.sentAt === "string"
+              ? new Date(sent.sentAt)
+              : null;
+          if (!sentDate || isNaN(sentDate.getTime())) return false;
+          const sentDateStr = formatYMD(sentDate);
+          return sentDateStr === today;
+        });
+
+        if (hasReminderSentToday) {
+          console.log(
+            `Skipping invoice ${invoice._id}: a reminder was already sent today`
+          );
+          continue;
+        }
+
         // Find reminders due today
         const remindersToSend = [];
 
@@ -105,7 +140,9 @@ export async function GET(req) {
           }
 
           // Check if already sent
-          const alreadySent = remindersSent.some((sent) => sent.id === template.id);
+          const alreadySent = remindersSent.some(
+            (sent) => sent.id === template.id
+          );
           if (alreadySent) {
             continue;
           }
@@ -134,7 +171,8 @@ export async function GET(req) {
             const workspace = await db
               .collection("workspaces")
               .findOne({ userId: invoice.userId });
-            const companyName = workspace?.workspaceName || workspace?.companyName;
+            const companyName =
+              workspace?.workspaceName || workspace?.companyName;
             const displayName = workspace?.displayName;
             const fromName = companyName || displayName || "Nudge";
             const yourName = displayName || companyName || "Nudge";
@@ -202,10 +240,6 @@ export async function GET(req) {
     });
   } catch (error) {
     console.error("GET /api/cron/reminders error:", error);
-    return Response.json(
-      { ok: false, error: error.message },
-      { status: 500 }
-    );
+    return Response.json({ ok: false, error: error.message }, { status: 500 });
   }
 }
-

@@ -111,14 +111,40 @@ export async function POST(_req, context) {
         fromName,
       });
     } catch (emailError) {
-      console.error("Error resending email:", emailError);
+      console.error(
+        `Error resending email for invoice ${id}:`,
+        emailError.name,
+        emailError.message
+      );
+
+      // Update the invoice with the email error details
+      const errorNow = new Date();
+      await db.collection("invoices").updateOne(
+        { _id: new ObjectId(id), userId },
+        {
+          $set: {
+            lastEmailErrorMessage:
+              emailError.message || "Unknown email send error",
+            lastEmailErrorAt: errorNow,
+            lastEmailErrorContext: "resend",
+            updatedAt: errorNow,
+          },
+        }
+      );
+
+      // Return error - do NOT add to remindersSent if email failed
       return Response.json(
-        { ok: false, error: "Failed to send email: " + emailError.message },
+        {
+          ok: false,
+          error:
+            "Could not resend the email. Your invoice is unchanged. Please try again or check the email configuration.",
+          emailError: emailError.message,
+        },
         { status: 500 }
       );
     }
 
-    // Add entry to remindersSent
+    // Add entry to remindersSent and clear any previous email errors
     const now = new Date();
     const newReminderEntry = {
       templateId,
@@ -138,6 +164,9 @@ export async function POST(_req, context) {
         $set: {
           remindersSent: updatedRemindersSent,
           updatedAt: now,
+          lastEmailErrorMessage: null,
+          lastEmailErrorAt: null,
+          lastEmailErrorContext: null,
         },
       }
     );
@@ -146,6 +175,9 @@ export async function POST(_req, context) {
       ...invoice,
       remindersSent: updatedRemindersSent,
       updatedAt: now,
+      lastEmailErrorMessage: null,
+      lastEmailErrorAt: null,
+      lastEmailErrorContext: null,
       id: invoice._id.toString(),
       _id: invoice._id.toString(),
       clientId: invoice.clientId.toString(),

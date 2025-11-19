@@ -97,29 +97,17 @@ export async function PUT(req, context) {
       templates,
     } = body;
 
-    // Validate required fields
-    if (!clientId || !amount || !dueDate || !status || !paymentLink) {
+    // Validate status enum first
+    if (!status) {
       return Response.json(
         {
           ok: false,
-          error: "clientId, amount, dueDate, status, and paymentLink are required.",
+          error: "status is required",
         },
         { status: 400 }
       );
     }
 
-    // Validate paymentLink is a valid URL
-    if (typeof paymentLink !== "string" || paymentLink.trim() === "") {
-      return Response.json(
-        {
-          ok: false,
-          error: "paymentLink must be a non-empty string.",
-        },
-        { status: 400 }
-      );
-    }
-
-    // Validate status enum
     const validStatuses = ["draft", "sent", "paid", "overdue"];
     if (!validStatuses.includes(status)) {
       return Response.json(
@@ -131,28 +119,77 @@ export async function PUT(req, context) {
       );
     }
 
+    // Validate required fields based on status
+    // Drafts only require clientId
+    // Other statuses require full validation
+    if (!clientId) {
+      return Response.json(
+        {
+          ok: false,
+          error: "clientId is required",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (status !== "draft") {
+      // Strict validation for sent/paid/overdue invoices
+      if (!amount || !dueDate || !paymentLink) {
+        return Response.json(
+          {
+            ok: false,
+            error: "amount, dueDate, and paymentLink are required for non-draft invoices",
+          },
+          { status: 400 }
+        );
+      }
+
+      // Validate paymentLink is a valid URL
+      if (typeof paymentLink !== "string" || paymentLink.trim() === "") {
+        return Response.json(
+          {
+            ok: false,
+            error: "paymentLink must be a non-empty string.",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB || "nudge");
 
-    // Convert amount from dollars to cents
-    const amountCents = Math.round(amount * 100);
-
+    // Build update document with required fields
     const updateDoc = {
       clientId: new ObjectId(clientId),
-      amountCents,
-      dueDate: dueDate.trim(),
       status: status.trim(),
       notes: notes?.trim() || "",
-      paymentLink: paymentLink.trim(),
-      ccEmails: Array.isArray(ccEmails) 
-        ? ccEmails.filter(e => e && e.trim()).map(e => e.trim())
-        : [],
-      // Email configuration
-      emailFlow: emailFlow || "custom",
-      reminderSchedule: reminderSchedule || "standard",
-      templates: templates || [],
       updatedAt: new Date(),
     };
+
+    // Add optional fields if provided
+    if (amount !== undefined && amount !== null && amount !== "") {
+      updateDoc.amountCents = Math.round(parseFloat(amount) * 100);
+    }
+
+    if (dueDate) {
+      updateDoc.dueDate = dueDate.trim();
+    }
+
+    if (paymentLink) {
+      updateDoc.paymentLink = paymentLink.trim();
+    }
+
+    if (ccEmails !== undefined) {
+      updateDoc.ccEmails = Array.isArray(ccEmails) 
+        ? ccEmails.filter(e => e && e.trim()).map(e => e.trim())
+        : [];
+    }
+
+    // Email configuration
+    if (emailFlow) updateDoc.emailFlow = emailFlow;
+    if (reminderSchedule) updateDoc.reminderSchedule = reminderSchedule;
+    if (templates) updateDoc.templates = templates;
 
     const result = await db.collection("invoices").updateOne(
       { _id: new ObjectId(id), userId },

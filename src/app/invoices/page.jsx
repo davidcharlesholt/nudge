@@ -37,7 +37,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { MoreVertical, Pencil, Trash2, CheckCircle2, ChevronDown, Send } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, CheckCircle2, ChevronDown, Send, ChevronRight } from "lucide-react";
 
 export default function InvoicesPage() {
   const router = useRouter();
@@ -50,6 +50,7 @@ export default function InvoicesPage() {
   const [invoiceToDelete, setInvoiceToDelete] = useState(null);
   const [resendDialogOpen, setResendDialogOpen] = useState(false);
   const [invoiceToResend, setInvoiceToResend] = useState(null);
+  const [expandedInvoiceId, setExpandedInvoiceId] = useState(null);
   const { toast } = useToast();
 
   // Status filter state - all selected by default
@@ -399,8 +400,9 @@ export default function InvoicesPage() {
         console.error("Error resending email:", error);
         toast({
           variant: "destructive",
-          title: "Failed to resend email",
-          description: error.message,
+          title: "Resend failed",
+          description:
+            "We couldn't resend this email. Your invoice is unchanged. Check the error details on this invoice.",
         });
       } finally {
         setResending(false);
@@ -487,7 +489,7 @@ export default function InvoicesPage() {
   }
 
   // Helper component to render reminder timeline for an invoice
-  function ReminderTimeline({ invoice }) {
+  function ReminderTimeline({ invoice, isExpanded, onToggle, client }) {
     // Skip if no reminder schedule
     if (!invoice.reminderSchedule) return null;
 
@@ -510,7 +512,7 @@ export default function InvoicesPage() {
     const getReminderStatus = (templateId) => {
       // Special case for "initial" - it's sent if invoice status is "sent", "paid", or "overdue"
       if (templateId === "initial") {
-        const sentFromArray = remindersSent.find((r) => r.id === templateId);
+        const sentFromArray = remindersSent.find((r) => r.id === templateId || r.templateId === templateId);
         if (sentFromArray) return sentFromArray;
         
         // If invoice is sent/paid/overdue, initial was sent (use sentAt or fallback)
@@ -522,13 +524,25 @@ export default function InvoicesPage() {
         }
       }
       
-      return remindersSent.find((r) => r.id === templateId);
+      return remindersSent.find((r) => r.id === templateId || r.templateId === templateId);
     };
 
-    // Format sent date
-    const formatSentDate = (sentAt) => {
+    // Format sent date with time
+    const formatSentDateTime = (sentAt) => {
       if (!sentAt) return "";
       const date = new Date(sentAt);
+      return date.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+    };
+
+    // Format date for scheduled reminders
+    const formatScheduledDate = (date) => {
       return date.toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
@@ -536,39 +550,179 @@ export default function InvoicesPage() {
       });
     };
 
-    return (
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <span className="text-xs text-muted-foreground mr-1">Timeline:</span>
-        {scheduleConfig.templates.map((template) => {
-          const sentInfo = getReminderStatus(template.id);
-          const isSent = !!sentInfo;
+    // Calculate scheduled date for a reminder based on dueDate and offset
+    const getScheduledDate = (template) => {
+      if (!invoice.dueDate || template.offset == null) return null;
+      const dueDate = new Date(invoice.dueDate);
+      const scheduledDate = new Date(dueDate);
+      scheduledDate.setDate(scheduledDate.getDate() + template.offset);
+      return scheduledDate;
+    };
 
-          return (
-            <div
-              key={template.id}
-              className={`
-                inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium
-                ${
-                  isSent
-                    ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                    : "border border-muted text-muted-foreground bg-background"
+    // Check if there's any email activity
+    const hasEmailActivity = invoice.sentAt || remindersSent.length > 0;
+
+    return (
+      <div className="space-y-2">
+        {/* Pills row with toggle button */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onToggle}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            role="button"
+            aria-expanded={isExpanded}
+            aria-label={isExpanded ? "Collapse email details" : "Expand email details"}
+          >
+            {isExpanded ? (
+              <ChevronDown className="h-3 w-3" />
+            ) : (
+              <ChevronRight className="h-3 w-3" />
+            )}
+            <span className="text-xs text-muted-foreground">Email Activity:</span>
+          </button>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {scheduleConfig.templates.map((template) => {
+              const sentInfo = getReminderStatus(template.id);
+              const isSent = !!sentInfo;
+
+              return (
+                <div
+                  key={template.id}
+                  className={`
+                    inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium
+                    ${
+                      isSent
+                        ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                        : "border border-muted text-muted-foreground bg-background"
+                    }
+                  `}
+                >
+                  {getSimpleLabel(template.id)}
+                  {isSent && (
+                    <span className="ml-1 text-[10px] opacity-70">
+                      ✓
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Expanded details panel */}
+        {isExpanded && (
+          <div className="mt-2 rounded-md border border-border bg-muted/40 p-3 space-y-2">
+            {!hasEmailActivity ? (
+              <div className="text-xs text-muted-foreground">
+                No emails sent yet
+              </div>
+            ) : (
+              scheduleConfig.templates.map((template) => {
+                const sentInfo = getReminderStatus(template.id);
+                const isSent = !!sentInfo;
+                const scheduledDate = getScheduledDate(template);
+                const label = getSimpleLabel(template.id);
+
+                // Build recipient info
+                const recipientInfo = [];
+                if (client?.email) {
+                  recipientInfo.push(client.email);
                 }
-              `}
-              title={
-                isSent
-                  ? `Sent ${formatSentDate(sentInfo.sentAt)}`
-                  : "Not sent yet"
-              }
-            >
-              {getSimpleLabel(template.id)}
-              {isSent && (
-                <span className="ml-1 text-[10px] opacity-70">
-                  ✓
+                if (invoice.ccEmails && invoice.ccEmails.length > 0) {
+                  recipientInfo.push(`CC: ${invoice.ccEmails.join(", ")}`);
+                }
+                const recipientText = recipientInfo.length > 0 ? ` to ${recipientInfo.join(", ")}` : "";
+
+                if (template.id === "initial") {
+                  // Initial invoice
+                  if (isSent && sentInfo.sentAt) {
+                    return (
+                      <div key={template.id} className="text-xs text-foreground">
+                        <span className="font-medium">{label}</span>
+                        {" — "}
+                        <span className="text-muted-foreground">
+                          Sent {formatSentDateTime(sentInfo.sentAt)}{recipientText}
+                        </span>
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div key={template.id} className="text-xs text-muted-foreground">
+                        <span className="font-medium">{label}</span>
+                        {" — Not sent yet"}
+                      </div>
+                    );
+                  }
+                } else {
+                  // Reminder templates
+                  if (isSent && sentInfo.sentAt) {
+                    return (
+                      <div key={template.id} className="text-xs text-foreground">
+                        <span className="font-medium">{label}</span>
+                        {" — "}
+                        <span className="text-muted-foreground">
+                          Sent {formatSentDateTime(sentInfo.sentAt)}{recipientText}
+                        </span>
+                      </div>
+                    );
+                  } else if (scheduledDate && template.offset != null) {
+                    // Future scheduled reminder
+                    const offsetDays = Math.abs(template.offset);
+                    const offsetText = template.offset === 0
+                      ? "on due date"
+                      : template.offset < 0
+                      ? `${offsetDays} day${offsetDays > 1 ? "s" : ""} before due date`
+                      : `${offsetDays} day${offsetDays > 1 ? "s" : ""} after due date`;
+                    
+                    return (
+                      <div key={template.id} className="text-xs text-muted-foreground">
+                        <span className="font-medium">{label}</span>
+                        {" — "}
+                        <span>
+                          Scheduled for {formatScheduledDate(scheduledDate)} ({offsetText})
+                        </span>
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div key={template.id} className="text-xs text-muted-foreground">
+                        <span className="font-medium">{label}</span>
+                        {" — Not sent yet"}
+                      </div>
+                    );
+                  }
+                }
+              })
+            )}
+          </div>
+        )}
+
+        {/* Email error display */}
+        {invoice.lastEmailErrorMessage && (
+          <div className="mt-2 flex items-start gap-1.5 text-xs text-destructive/80">
+            <span className="font-medium">⚠</span>
+            <div>
+              <span className="font-medium">Last email error:</span>
+              {" "}
+              {invoice.lastEmailErrorMessage}
+              {invoice.lastEmailErrorAt && (
+                <span className="text-muted-foreground">
+                  {" "}
+                  (
+                  {new Date(invoice.lastEmailErrorAt).toLocaleString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                    hour12: true,
+                  })}
+                  )
                 </span>
               )}
             </div>
-          );
-        })}
+          </div>
+        )}
       </div>
     );
   }
@@ -775,7 +929,16 @@ export default function InvoicesPage() {
                   {invoice.reminderSchedule && (
                     <TableRow className="border-none">
                       <TableCell colSpan={5} className="py-2 bg-muted/30">
-                        <ReminderTimeline invoice={invoice} />
+                        <ReminderTimeline
+                          invoice={invoice}
+                          isExpanded={expandedInvoiceId === invoice.id}
+                          onToggle={() => {
+                            setExpandedInvoiceId(
+                              expandedInvoiceId === invoice.id ? null : invoice.id
+                            );
+                          }}
+                          client={clients.find((c) => c.id === invoice.clientId)}
+                        />
                       </TableCell>
                     </TableRow>
                   )}

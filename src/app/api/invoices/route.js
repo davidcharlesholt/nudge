@@ -93,30 +93,17 @@ export async function POST(req) {
       templates,
     } = body;
 
-    // Validate required fields
-    if (!clientId || !amount || !dueDate || !status || !paymentLink) {
+    // Validate status enum first
+    if (!status) {
       return Response.json(
         {
           ok: false,
-          error:
-            "clientId, amount, dueDate, status, and paymentLink are required.",
+          error: "status is required",
         },
         { status: 400 }
       );
     }
 
-    // Validate paymentLink is a valid URL
-    if (typeof paymentLink !== "string" || paymentLink.trim() === "") {
-      return Response.json(
-        {
-          ok: false,
-          error: "paymentLink must be a non-empty string.",
-        },
-        { status: 400 }
-      );
-    }
-
-    // Validate status enum (only draft or sent allowed)
     const normalizedStatus = status.toLowerCase().trim();
     if (normalizedStatus !== "draft" && normalizedStatus !== "sent") {
       return Response.json(
@@ -128,32 +115,108 @@ export async function POST(req) {
       );
     }
 
+    // Validate required fields based on status
+    // Drafts only require clientId
+    // Sent invoices require full validation
+    if (!clientId) {
+      return Response.json(
+        {
+          ok: false,
+          error: "clientId is required",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (normalizedStatus === "sent") {
+      // Strict validation for sent invoices
+      if (!amount || !dueDate || !paymentLink) {
+        return Response.json(
+          {
+            ok: false,
+            error:
+              "amount, dueDate, and paymentLink are required to send an invoice",
+          },
+          { status: 400 }
+        );
+      }
+
+      // Validate paymentLink is a valid URL
+      if (typeof paymentLink !== "string" || paymentLink.trim() === "") {
+        return Response.json(
+          {
+            ok: false,
+            error: "paymentLink must be a non-empty string.",
+          },
+          { status: 400 }
+        );
+      }
+
+      // Validate templates exist for sent invoices
+      if (!templates || !Array.isArray(templates) || templates.length === 0) {
+        return Response.json(
+          {
+            ok: false,
+            error: "templates are required to send an invoice",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const dbClient = await clientPromise;
     const db = dbClient.db(process.env.MONGODB_DB || "nudge");
 
-    // Convert amount from dollars to cents
-    const amountCents = Math.round(amount * 100);
-
     const now = new Date();
+
+    // Build document with minimal fields for drafts, full fields for sent invoices
     const doc = {
       userId,
       clientId: new ObjectId(clientId),
-      amountCents,
-      dueDate: dueDate.trim(),
       status: normalizedStatus,
       notes: notes?.trim() || "",
-      paymentLink: paymentLink.trim(),
-      ccEmails: Array.isArray(ccEmails)
-        ? ccEmails.filter((e) => e && e.trim()).map((e) => e.trim())
-        : [],
-      // Email configuration
-      emailFlow: emailFlow || "custom",
-      reminderSchedule: reminderSchedule || "standard",
-      templates: templates || [],
-      remindersSent: Array.isArray(body.remindersSent) ? body.remindersSent : [],
+      // Email error tracking
+      lastEmailErrorMessage: null,
+      lastEmailErrorAt: null,
+      lastEmailErrorContext: null,
       createdAt: now,
       updatedAt: now,
     };
+
+    // Add full fields for sent invoices (or if provided for drafts)
+    if (amount !== undefined && amount !== null && amount !== "") {
+      doc.amountCents = Math.round(parseFloat(amount) * 100);
+    }
+
+    if (dueDate) {
+      doc.dueDate = dueDate.trim();
+    }
+
+    if (paymentLink) {
+      doc.paymentLink = paymentLink.trim();
+    }
+
+    if (ccEmails) {
+      doc.ccEmails = Array.isArray(ccEmails)
+        ? ccEmails.filter((e) => e && e.trim()).map((e) => e.trim())
+        : [];
+    }
+
+    // Email configuration - only for sent invoices or if explicitly provided
+    if (normalizedStatus === "sent") {
+      doc.emailFlow = emailFlow || "custom";
+      doc.reminderSchedule = reminderSchedule || "standard";
+      doc.templates = templates || [];
+      doc.remindersSent = Array.isArray(body.remindersSent) ? body.remindersSent : [];
+    } else {
+      // For drafts, store these if provided but don't require them
+      if (emailFlow) doc.emailFlow = emailFlow;
+      if (reminderSchedule) doc.reminderSchedule = reminderSchedule;
+      if (templates) doc.templates = templates;
+      if (body.remindersSent) {
+        doc.remindersSent = Array.isArray(body.remindersSent) ? body.remindersSent : [];
+      }
+    }
 
     // Add sentAt timestamp if status is "sent"
     if (normalizedStatus === "sent") {
@@ -202,9 +265,47 @@ export async function POST(req) {
           });
         }
       } catch (emailError) {
-        console.error("Error sending invoice email:", emailError);
-        // Don't fail the invoice creation if email fails
-        // The invoice is already created at this point
+        console.error(
+          `Error sending invoice email for invoice ${result.insertedId}:`,
+          emailError.name,
+          emailError.message
+        );
+
+        // Update the invoice with the email error details
+        const errorNow = new Date();
+        await db.collection("invoices").updateOne(
+          { _id: result.insertedId, userId },
+          {
+            $set: {
+              lastEmailErrorMessage:
+                emailError.message || "Unknown email send error",
+              lastEmailErrorAt: errorNow,
+              lastEmailErrorContext: "initial",
+              updatedAt: errorNow,
+            },
+          }
+        );
+
+        // Return success with email error - invoice was created but email failed
+        return Response.json(
+          {
+            ok: true,
+            invoice: {
+              ...doc,
+              id: result.insertedId.toString(),
+              _id: result.insertedId.toString(),
+              clientId: doc.clientId.toString(),
+              lastEmailErrorMessage:
+                emailError.message || "Unknown email send error",
+              lastEmailErrorAt: errorNow,
+              lastEmailErrorContext: "initial",
+            },
+            emailError: emailError.message,
+            warning:
+              "Invoice was created but the email could not be sent. You can try resending it later.",
+          },
+          { status: 201 }
+        );
       }
     }
 

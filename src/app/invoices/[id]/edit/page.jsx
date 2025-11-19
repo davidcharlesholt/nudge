@@ -164,7 +164,8 @@ export default function EditInvoicePage() {
       // Pre-fill form with invoice data
       const invoice = invoiceData.invoice;
       setClientId(invoice.clientId || "");
-      setAmount((invoice.amountCents / 100).toFixed(2));
+      // Handle optional fields for drafts
+      setAmount(invoice.amountCents ? (invoice.amountCents / 100).toFixed(2) : "");
       setPaymentLink(invoice.paymentLink || "");
       setDueDate(invoice.dueDate || "");
       setStatus(invoice.status || "draft");
@@ -456,7 +457,17 @@ export default function EditInvoicePage() {
       const data = await res.json();
 
       if (!res.ok || !data.ok) {
-        throw new Error(data.error || "Failed to send invoice");
+        // Show specific toast for email failures
+        toast({
+          variant: "destructive",
+          title: "Email not sent",
+          description:
+            data.error ||
+            "We couldn't send this email, but the invoice was still saved. You can try again later or use Resend from the invoice menu.",
+        });
+        // Redirect to invoices - the invoice exists, just email failed
+        router.push("/invoices");
+        return;
       }
 
       // Update local status
@@ -512,22 +523,30 @@ export default function EditInvoicePage() {
     setSubmitting(true);
 
     try {
+      // Build payload with all available fields
+      const payload = {
+        clientId,
+        status,
+        notes: "",
+        ccEmails,
+      };
+
+      // Only include amount if it's provided
+      if (amount) {
+        payload.amount = parseFloat(amount);
+      }
+
+      // Only include other fields if provided
+      if (paymentLink) payload.paymentLink = paymentLink;
+      if (dueDate) payload.dueDate = dueDate;
+      if (emailFlow) payload.emailFlow = emailFlow;
+      if (reminderSchedule) payload.reminderSchedule = reminderSchedule;
+      if (savedTemplates) payload.templates = savedTemplates;
+
       const res = await fetch(`/api/invoices/${invoiceId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clientId,
-          amount: parseFloat(amount),
-          paymentLink,
-          dueDate,
-          status,
-          notes: "",
-          ccEmails,
-          // Email configuration
-          emailFlow: currentFlow,
-          reminderSchedule,
-          templates: savedTemplates,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();

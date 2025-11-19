@@ -437,22 +437,35 @@ export default function NewInvoicePage() {
     setSubmitting(true);
 
     try {
+      // Build request payload based on status
+      const payload = {
+        clientId,
+        status,
+      };
+
+      // For drafts, only include optional fields if they're filled in
+      if (status === "draft") {
+        if (amount) payload.amount = parseFloat(amount);
+        if (paymentLink) payload.paymentLink = paymentLink;
+        if (dueDate) payload.dueDate = dueDate;
+        if (ccEmails && ccEmails.length > 0) payload.ccEmails = ccEmails;
+        // Don't include templates/schedule for drafts
+      } else {
+        // For sent invoices, include all required fields
+        payload.amount = parseFloat(amount);
+        payload.paymentLink = paymentLink;
+        payload.dueDate = dueDate;
+        payload.notes = "";
+        payload.ccEmails = ccEmails;
+        payload.emailFlow = currentFlow;
+        payload.reminderSchedule = reminderSchedule;
+        payload.templates = savedTemplates;
+      }
+
       const res = await fetch("/api/invoices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clientId,
-          amount: parseFloat(amount),
-          paymentLink,
-          dueDate,
-          status,
-          notes: "",
-          ccEmails,
-          // Email configuration
-          emailFlow: currentFlow,
-          reminderSchedule,
-          templates: savedTemplates,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -461,6 +474,21 @@ export default function NewInvoicePage() {
         throw new Error(data.error || "Failed to create invoice");
       }
 
+      // Check if email failed (invoice created but email didn't send)
+      if (data.emailError) {
+        toast({
+          variant: "destructive",
+          title: "Email not sent",
+          description:
+            data.warning ||
+            "We couldn't send this email, but the invoice was still saved. You can try again later or use Resend from the invoice menu.",
+        });
+        // Still redirect to invoices page - the invoice was created
+        router.push("/invoices");
+        return;
+      }
+
+      // Success - invoice created and email sent (or draft saved)
       const message =
         status === "sent"
           ? "Invoice has been created and sent successfully."
@@ -922,7 +950,7 @@ export default function NewInvoicePage() {
             </Button>
             <Button
               onClick={handleSaveAsDraft}
-              disabled={submitting || clients.length === 0}
+              disabled={submitting || !clientId}
               className="bg-[#1e293b] hover:bg-[#0f172a] text-white"
             >
               {submitting ? "Saving..." : "Save as Draft"}
