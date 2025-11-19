@@ -195,11 +195,10 @@ export default function OnboardingPage() {
               </CardHeader>
 
               <div className="mt-6 space-y-4">
-                {/* Workspace Name */}
+                {/* Company Name */}
                 <div className="space-y-2">
                   <Label htmlFor="workspaceName">
-                    Workspace / Company Name{" "}
-                    <span className="text-destructive">*</span>
+                    Company Name <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="workspaceName"
@@ -209,8 +208,10 @@ export default function OnboardingPage() {
                     placeholder="Acme Design Studio"
                   />
                   <p className="text-xs text-muted-foreground">
-                    This name will appear in your dashboard and can be used in
-                    invoice headers.
+                    This will appear on your invoices and in the
+                    &apos;From&apos; name on emails. If you don&apos;t have a
+                    company name, you can enter your full name (e.g.
+                    &apos;Jordan Smith&apos;).
                   </p>
                 </div>
 

@@ -2,13 +2,13 @@ import clientPromise from "@/lib/db";
 import { ObjectId } from "mongodb";
 import { auth } from "@clerk/nextjs/server";
 import { sendInvoiceEmail } from "@/lib/email";
-import { REMINDER_SCHEDULES } from "@/lib/invoice-templates";
+import { getToneVariant } from "@/lib/invoice-templates";
 
 export async function POST(_req, context) {
   try {
     // Get the current user's ID from Clerk
     const { userId } = await auth();
-
+    
     // Return 401 if no user is authenticated
     if (!userId) {
       return Response.json(
@@ -29,6 +29,17 @@ export async function POST(_req, context) {
       );
     }
 
+    // Parse request body
+    const requestPayload = await _req.json();
+    const { templateId } = requestPayload;
+
+    if (!templateId || typeof templateId !== "string") {
+      return Response.json(
+        { ok: false, error: "templateId is required" },
+        { status: 400 }
+      );
+    }
+
     const dbClient = await clientPromise;
     const db = dbClient.db(process.env.MONGODB_DB || "nudge");
 
@@ -45,78 +56,22 @@ export async function POST(_req, context) {
       );
     }
 
-    // Ensure status is "sent" or "overdue"
-    if (invoice.status !== "sent" && invoice.status !== "overdue") {
+    // Find the requested template
+    const template = (invoice.templates || []).find((t) => t.id === templateId);
+
+    if (!template) {
       return Response.json(
-        {
-          ok: false,
-          error:
-            "Reminders can only be sent for invoices with status 'sent' or 'overdue'",
-        },
+        { ok: false, error: "Template not found on this invoice" },
         { status: 400 }
       );
     }
 
-    // Get reminder schedule
-    const reminderSchedule = invoice.reminderSchedule || "standard";
-    const schedule = REMINDER_SCHEDULES[reminderSchedule];
-
-    if (!schedule) {
-      return Response.json(
-        { ok: false, error: `Invalid reminder schedule: ${reminderSchedule}` },
-        { status: 400 }
-      );
-    }
-
-    // Get reminder templates (excluding initial template with null offset)
-    const reminderTemplates = schedule.templates.filter(
-      (t) => t.offset !== null
-    );
-
-    // Get the index of the next reminder to send
-    const remindersSent = invoice.remindersSent || [];
-    const nextReminderIndex = remindersSent.length;
-
-    // Check if all reminders have been sent
-    if (nextReminderIndex >= reminderTemplates.length) {
-      return Response.json(
-        {
-          ok: false,
-          error: "All reminders for this invoice have already been sent",
-        },
-        { status: 400 }
-      );
-    }
-
-    // Get the next reminder template ID
-    const nextReminderTemplateId = reminderTemplates[nextReminderIndex].id;
-
-    // Find the template in the invoice's templates array
-    const invoiceTemplates = invoice.templates || [];
-    const reminderTemplate = invoiceTemplates.find(
-      (t) => t.id === nextReminderTemplateId
-    );
-
-    if (!reminderTemplate) {
-      return Response.json(
-        {
-          ok: false,
-          error: `Reminder template '${nextReminderTemplateId}' not found in invoice templates`,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Check if this reminder has already been sent (safety check)
-    if (remindersSent.includes(nextReminderTemplateId)) {
-      return Response.json(
-        {
-          ok: false,
-          error: `Reminder '${nextReminderTemplateId}' has already been sent`,
-        },
-        { status: 400 }
-      );
-    }
+    // Get the email subject and body with fallback logic
+    // Primary: use canonical fields (always present after normalization)
+    // Fallback: use tone variant if canonical fields are missing
+    const variant = template.toneVariants ? getToneVariant(template, "friendly") : null;
+    const finalSubject = template.subject || variant?.subject || "";
+    const finalBody = template.body || variant?.body || "";
 
     // Fetch client data
     const clientDoc = await db.collection("clients").findOne({
@@ -138,13 +93,13 @@ export async function POST(_req, context) {
     const fromName = companyName || displayName || "Nudge";
     const yourName = displayName || companyName || "Nudge";
 
-    // Send the reminder email
+    // Send the email
     try {
       await sendInvoiceEmail({
         to: clientDoc.email,
         ccEmails: invoice.ccEmails || [],
-        subject: reminderTemplate.subject,
-        body: reminderTemplate.body,
+        subject: finalSubject,
+        body: finalBody,
         client: {
           firstName: clientDoc.firstName,
           fullName: clientDoc.fullName,
@@ -156,17 +111,27 @@ export async function POST(_req, context) {
         fromName,
       });
     } catch (emailError) {
-      console.error("Error sending reminder email:", emailError);
+      console.error("Error resending email:", emailError);
       return Response.json(
         { ok: false, error: "Failed to send email: " + emailError.message },
         { status: 500 }
       );
     }
 
-    // Update invoice: add reminder ID to remindersSent and update updatedAt
+    // Add entry to remindersSent
     const now = new Date();
-    const updatedRemindersSent = [...remindersSent, nextReminderTemplateId];
+    const newReminderEntry = {
+      templateId,
+      sentAt: now,
+      type: "manual-resend",
+    };
 
+    const updatedRemindersSent = [
+      ...(invoice.remindersSent || []),
+      newReminderEntry,
+    ];
+
+    // Update invoice
     await db.collection("invoices").updateOne(
       { _id: new ObjectId(id), userId },
       {
@@ -177,20 +142,22 @@ export async function POST(_req, context) {
       }
     );
 
-    // Return updated invoice
+    const updatedInvoice = {
+      ...invoice,
+      remindersSent: updatedRemindersSent,
+      updatedAt: now,
+      id: invoice._id.toString(),
+      _id: invoice._id.toString(),
+      clientId: invoice.clientId.toString(),
+    };
+
     return Response.json({
       ok: true,
-      invoice: {
-        ...invoice,
-        remindersSent: updatedRemindersSent,
-        updatedAt: now,
-        id: invoice._id.toString(),
-        _id: invoice._id.toString(),
-        clientId: invoice.clientId.toString(),
-      },
+      invoice: updatedInvoice,
     });
   } catch (error) {
-    console.error("POST /api/invoices/[id]/send-reminder error:", error);
+    console.error("POST /api/invoices/[id]/resend error:", error);
     return Response.json({ ok: false, error: error.message }, { status: 500 });
   }
 }
+

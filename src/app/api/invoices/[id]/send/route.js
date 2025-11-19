@@ -65,9 +65,12 @@ export async function POST(_req, context) {
       );
     }
 
-    // Fetch workspace for sender name
+    // Fetch workspace for sender names
     const workspace = await db.collection("workspaces").findOne({ userId });
-    const yourName = workspace?.displayName || "Nudge";
+    const companyName = workspace?.workspaceName || workspace?.companyName;
+    const displayName = workspace?.displayName;
+    const fromName = companyName || displayName || "Nudge";
+    const yourName = displayName || companyName || "Nudge";
 
     // Get initial template
     const templates = invoice.templates || [];
@@ -95,6 +98,7 @@ export async function POST(_req, context) {
         dueDate: invoice.dueDate,
         paymentLink: invoice.paymentLink,
         yourName,
+        fromName,
       });
     } catch (emailError) {
       console.error("Error sending invoice email:", emailError);

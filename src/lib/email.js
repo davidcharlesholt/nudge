@@ -5,15 +5,20 @@ if (!process.env.RESEND_API_KEY) {
   throw new Error("Missing RESEND_API_KEY in environment");
 }
 
-if (!process.env.RESEND_FROM_ADDRESS) {
-  throw new Error("Missing RESEND_FROM_ADDRESS in environment");
+if (!process.env.RESEND_FROM_EMAIL) {
+  throw new Error("Missing RESEND_FROM_EMAIL in environment");
 }
 
+// RESEND_FROM_NAME is optional; we'll use "Nudge" as fallback
 export const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function sendTestEmail(to) {
+export async function sendTestEmail(to, fromName) {
+  const fallbackFromName = process.env.RESEND_FROM_NAME || "Nudge";
+  const finalFromName = fromName || fallbackFromName;
+  const from = `${finalFromName} <${process.env.RESEND_FROM_EMAIL}>`;
+  
   return resend.emails.send({
-    from: process.env.RESEND_FROM_ADDRESS,
+    from,
     to,
     subject: "Nudge test email",
     text: "If you're seeing this, Resend is wired up correctly 🎉",
@@ -31,7 +36,8 @@ export async function sendTestEmail(to) {
  * @param {number} params.amountCents - Invoice amount in cents
  * @param {string} params.dueDate - Due date string
  * @param {string} params.paymentLink - Payment URL
- * @param {string} params.yourName - Sender's name
+ * @param {string} params.yourName - Sender's name (for email sign-off)
+ * @param {string} params.fromName - Sender's display name (for email From header)
  */
 export async function sendInvoiceEmail({
   to,
@@ -43,6 +49,7 @@ export async function sendInvoiceEmail({
   dueDate,
   paymentLink,
   yourName,
+  fromName,
 }) {
   // Format amount as dollars
   const amount = `$${(amountCents / 100).toFixed(2)}`;
@@ -78,8 +85,13 @@ export async function sendInvoiceEmail({
   // Convert body to HTML (preserve line breaks)
   const htmlBody = finalBody.replace(/\n/g, "<br>");
 
+  // Build From header with company/sender name and fallbacks
+  const fallbackFromName = process.env.RESEND_FROM_NAME || "Nudge";
+  const finalFromName = fromName || fallbackFromName;
+  const from = `${finalFromName} <${process.env.RESEND_FROM_EMAIL}>`;
+
   const emailData = {
-    from: process.env.RESEND_FROM_ADDRESS,
+    from,
     to: [to],
     subject: finalSubject,
     html: `<div style="font-family: sans-serif; line-height: 1.6; color: #333;">${htmlBody}</div>`,

@@ -37,9 +37,10 @@ import {
   REMINDER_SCHEDULES,
   TONE_OPTIONS,
   initializeTemplatesForSchedule,
-  updateTemplateTone,
-  customizeTemplate,
-  revertTemplateToDefaults,
+  updateToneVariant,
+  revertToneVariantToDefaults,
+  getToneVariant,
+  syncCanonicalFields,
   rewriteWithAI,
 } from "@/lib/invoice-templates";
 import { getWorkspace } from "@/lib/workspace";
@@ -113,8 +114,10 @@ export default function NewInvoicePage() {
   const [editorTone, setEditorTone] = useState("friendly");
   const [editorSubject, setEditorSubject] = useState("");
   const [editorBody, setEditorBody] = useState("");
+  const [previousSubject, setPreviousSubject] = useState("");
   const [previousBody, setPreviousBody] = useState("");
   const [aiRewritten, setAiRewritten] = useState(false);
+  const [aiRewriting, setAiRewriting] = useState(false);
   const [showSavedIndicator, setShowSavedIndicator] = useState(false);
 
   // Dialog state
@@ -128,16 +131,16 @@ export default function NewInvoicePage() {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewTab, setPreviewTab] = useState("initial");
 
-  // Load editor with selected template
+  // Load editor with selected template and tone
   useEffect(() => {
     const template = templates.find((t) => t.id === selectedTemplateId);
     if (template) {
-      setEditorTone(template.tone);
-      setEditorSubject(template.subject);
-      setEditorBody(template.body);
+      const variant = getToneVariant(template, editorTone);
+      setEditorSubject(variant.subject);
+      setEditorBody(variant.body);
       setAiRewritten(false);
     }
-  }, [selectedTemplateId, templates]);
+  }, [selectedTemplateId, editorTone, templates]);
 
   // Auto-populate CC emails when client changes
   useEffect(() => {
@@ -305,17 +308,16 @@ export default function NewInvoicePage() {
     }
   }
 
-  // Save current template
+  // Save current template for the current tone
   function handleSaveTemplate() {
-    const updatedTemplates = templates.map((t) =>
-      t.id === selectedTemplateId
-        ? customizeTemplate(
-            { ...t, tone: editorTone },
-            editorSubject,
-            editorBody
-          )
-        : t
-    );
+    const updatedTemplates = templates.map((t) => {
+      if (t.id === selectedTemplateId) {
+        // Update the tone variant and sync canonical fields
+        return updateToneVariant(t, editorTone, editorSubject, editorBody);
+      }
+      // For other templates, ensure canonical fields reflect current tone
+      return syncCanonicalFields(t, editorTone);
+    });
 
     setTemplates(updatedTemplates);
     setSavedTemplates(updatedTemplates);
@@ -324,11 +326,11 @@ export default function NewInvoicePage() {
     setTimeout(() => setShowSavedIndicator(false), 2000);
   }
 
-  // Revert current template to defaults
+  // Revert current tone variant to defaults
   function handleRevertTemplate() {
     const currentTemplate = templates.find((t) => t.id === selectedTemplateId);
     if (currentTemplate) {
-      const reverted = revertTemplateToDefaults(currentTemplate);
+      const reverted = revertToneVariantToDefaults(currentTemplate, editorTone);
 
       const updatedTemplates = templates.map((t) =>
         t.id === selectedTemplateId ? reverted : t
@@ -336,62 +338,84 @@ export default function NewInvoicePage() {
 
       setTemplates(updatedTemplates);
       setSavedTemplates(updatedTemplates);
-      setEditorTone(reverted.tone);
-      setEditorSubject(reverted.subject);
-      setEditorBody(reverted.body);
+      
+      const variant = getToneVariant(reverted, editorTone);
+      setEditorSubject(variant.subject);
+      setEditorBody(variant.body);
       setAiRewritten(false);
     }
   }
 
-  // Check if current template has unsaved changes
+  // Check if current tone variant has unsaved changes
   function hasUnsavedChanges() {
     const savedTemplate = savedTemplates.find(
       (t) => t.id === selectedTemplateId
     );
     if (!savedTemplate) return false;
 
+    const savedVariant = getToneVariant(savedTemplate, editorTone);
     return (
-      savedTemplate.tone !== editorTone ||
-      savedTemplate.subject !== editorSubject ||
-      savedTemplate.body !== editorBody
+      savedVariant.subject !== editorSubject ||
+      savedVariant.body !== editorBody
     );
   }
 
-  // Handle AI rewrite
-  function handleAiRewrite() {
-    setPreviousBody(editorBody);
-    const rewritten = rewriteWithAI(editorBody, editorTone);
-    setEditorBody(rewritten);
-    setAiRewritten(true);
+  // Handle AI rewrite for current tone variant only
+  async function handleAiRewrite() {
+    try {
+      setAiRewriting(true);
+      
+      // Save current content for undo
+      setPreviousSubject(editorSubject);
+      setPreviousBody(editorBody);
+
+      // Call AI rewrite API
+      const rewritten = await rewriteWithAI(editorSubject, editorBody, editorTone);
+      
+      // Update editor with rewritten content
+      setEditorSubject(rewritten.subject);
+      setEditorBody(rewritten.body);
+      setAiRewritten(true);
+
+      // Update the current tone variant in templates state
+      const updatedTemplates = templates.map((t) =>
+        t.id === selectedTemplateId
+          ? updateToneVariant(t, editorTone, rewritten.subject, rewritten.body)
+          : t
+      );
+      setTemplates(updatedTemplates);
+
+      toast({
+        title: "Content rewritten",
+        description: "AI has successfully rewritten your email.",
+      });
+    } catch (error) {
+      console.error("AI rewrite error:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to rewrite",
+        description: error.message || "An error occurred while rewriting the content.",
+      });
+    } finally {
+      setAiRewriting(false);
+    }
   }
 
   // Handle undo AI rewrite
   function handleUndoRewrite() {
-    if (previousBody) {
+    if (previousSubject || previousBody) {
+      setEditorSubject(previousSubject);
       setEditorBody(previousBody);
+      setPreviousSubject("");
       setPreviousBody("");
       setAiRewritten(false);
     }
   }
 
-  // Handle tone change
+  // Handle tone change - just update the tone, useEffect will load the variant
   function handleToneChange(newTone) {
-    const currentTemplate = templates.find((t) => t.id === selectedTemplateId);
-    if (currentTemplate) {
-      const updated = updateTemplateTone(currentTemplate, newTone);
-
-      // Update the template in state
-      const updatedTemplates = templates.map((t) =>
-        t.id === selectedTemplateId ? updated : t
-      );
-      setTemplates(updatedTemplates);
-
-      // Update editor state
-      setEditorTone(updated.tone);
-      setEditorSubject(updated.subject);
-      setEditorBody(updated.body);
-      setAiRewritten(false);
-    }
+    setEditorTone(newTone);
+    setAiRewritten(false);
   }
 
   function addCcEmail() {
@@ -461,6 +485,11 @@ export default function NewInvoicePage() {
 
   function handlePreviewAndSend(e) {
     e.preventDefault();
+    
+    // Sync all templates' canonical fields with the current editor tone before preview
+    const syncedTemplates = templates.map((t) => syncCanonicalFields(t, editorTone));
+    setSavedTemplates(syncedTemplates);
+    
     setShowPreviewModal(true);
     setPreviewTab("initial");
   }
@@ -826,12 +855,13 @@ export default function NewInvoicePage() {
                       variant="outline"
                       size="sm"
                       onClick={handleAiRewrite}
+                      disabled={aiRewriting}
                     >
                       <Sparkles className="mr-2 h-4 w-4" />
-                      Rewrite with AI
+                      {aiRewriting ? "Rewriting..." : "Rewrite with AI"}
                     </Button>
 
-                    {aiRewritten && (
+                    {aiRewritten && !aiRewriting && (
                       <>
                         <span className="text-xs text-muted-foreground">
                           Rewritten with AI
@@ -1050,6 +1080,11 @@ export default function NewInvoicePage() {
                   }
                 }
 
+                // Compute From name for preview
+                const companyName = workspace?.workspaceName || workspace?.companyName;
+                const displayName = workspace?.displayName;
+                const previewFromName = companyName || displayName || "Nudge";
+
                 return (
                   <TabsContent
                     key={template.id}
@@ -1064,6 +1099,16 @@ export default function NewInvoicePage() {
                         </p>
                       </div>
                     )}
+
+                    {/* From */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">From:</Label>
+                      <div className="rounded-lg border border-gray-300 bg-gray-50 p-3">
+                        <p className="text-sm">
+                          {previewFromName} &lt;hello@sendnudge.com&gt;
+                        </p>
+                      </div>
+                    </div>
 
                     {/* Recipients */}
                     <div className="space-y-2">

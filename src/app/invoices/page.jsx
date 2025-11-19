@@ -35,16 +35,21 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { MoreVertical, Pencil, Trash2, CheckCircle2, ChevronDown } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { MoreVertical, Pencil, Trash2, CheckCircle2, ChevronDown, Send } from "lucide-react";
 
 export default function InvoicesPage() {
   const router = useRouter();
+  const [workspace, setWorkspace] = useState(null);
   const [clients, setClients] = useState([]);
   const [allInvoices, setAllInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState(null);
+  const [resendDialogOpen, setResendDialogOpen] = useState(false);
+  const [invoiceToResend, setInvoiceToResend] = useState(null);
   const { toast } = useToast();
 
   // Status filter state - all selected by default
@@ -61,8 +66,9 @@ export default function InvoicesPage() {
   }, []);
 
   async function checkWorkspaceAndFetch() {
-    const workspace = await requireWorkspace(router);
-    if (!workspace) return; // Will redirect to onboarding
+    const workspaceData = await requireWorkspace(router);
+    if (!workspaceData) return; // Will redirect to onboarding
+    setWorkspace(workspaceData);
     fetchData();
   }
 
@@ -129,6 +135,11 @@ export default function InvoicesPage() {
   function openDeleteDialog(invoice) {
     setInvoiceToDelete(invoice);
     setDeleteDialogOpen(true);
+  }
+
+  function openResendDialog(invoice) {
+    setInvoiceToResend(invoice);
+    setResendDialogOpen(true);
   }
 
   async function confirmDelete() {
@@ -253,6 +264,227 @@ export default function InvoicesPage() {
       dotColor: "bg-red-500",
     },
   ];
+
+  // Check if invoice can be resent (has been sent at least once)
+  function canResendInvoice(invoice) {
+    // Can resend if invoice status is sent, paid, or overdue
+    // (meaning the initial email was sent)
+    return ["sent", "paid", "overdue"].includes(invoice.status);
+  }
+
+  // Helper to replace placeholders in email templates
+  function replacePlaceholders(text, invoice, clientData, workspaceData) {
+    if (!text) return "";
+
+    const formattedAmount = `$${(invoice.amountCents / 100).toFixed(2)}`;
+    const dueDateObj = new Date(invoice.dueDate);
+    const formattedDueDate = isNaN(dueDateObj)
+      ? invoice.dueDate
+      : dueDateObj.toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        });
+    const dayOfWeek = isNaN(dueDateObj)
+      ? ""
+      : dueDateObj.toLocaleDateString("en-US", { weekday: "long" });
+
+    return text
+      .replace(/\{\{clientName\}\}/g, clientData?.fullName || "")
+      .replace(/\{\{clientFirstName\}\}/g, clientData?.firstName || "")
+      .replace(/\{\{amount\}\}/g, formattedAmount)
+      .replace(/\{\{dueDate\}\}/g, formattedDueDate)
+      .replace(/\{\{paymentLink\}\}/g, invoice.paymentLink || "")
+      .replace(/\{\{yourName\}\}/g, workspaceData?.displayName || "")
+      .replace(/\{\{dayOfWeek\}\}/g, dayOfWeek);
+  }
+
+  // ResendEmailDialog component
+  function ResendEmailDialog({ open, onOpenChange, invoice }) {
+    const [selectedTemplateId, setSelectedTemplateId] = useState("");
+    const [resending, setResending] = useState(false);
+
+    if (!invoice) return null;
+
+    // Helper to get send status for a template
+    function getSendStatus(templateId, invoice) {
+      if (templateId === "initial") {
+        // Initial invoice uses invoice.sentAt
+        if (invoice.sentAt) {
+          return {
+            wasSent: true,
+            sentAt: invoice.sentAt,
+          };
+        }
+        return { wasSent: false, sentAt: null };
+      } else {
+        // Reminders use invoice.remindersSent[]
+        const sentRecord = (invoice.remindersSent || []).find(
+          (sent) => (sent.templateId || sent.id) === templateId
+        );
+        if (sentRecord) {
+          return {
+            wasSent: true,
+            sentAt: sentRecord.sentAt,
+          };
+        }
+        return { wasSent: false, sentAt: null };
+      }
+    }
+
+    // Get all available templates from the invoice
+    const availableTemplates = (invoice.templates || []).map((template) => {
+      const sendStatus = getSendStatus(template.id, invoice);
+
+      return {
+        templateId: template.id,
+        label: template.label || template.id,
+        subject: template.subject || template.toneVariants?.friendly?.subject || "No subject",
+        body: template.body || template.toneVariants?.friendly?.body || "",
+        wasSent: sendStatus.wasSent,
+        sentAt: sendStatus.sentAt,
+      };
+    });
+
+    // Get client data for placeholder replacement
+    const clientData = clients.find((c) => c.id === invoice.clientId);
+
+    // Get selected template for preview
+    const selectedTemplate = availableTemplates.find((t) => t.templateId === selectedTemplateId);
+    const previewSubject = selectedTemplate
+      ? replacePlaceholders(selectedTemplate.subject, invoice, clientData, workspace)
+      : "";
+    const previewBody = selectedTemplate
+      ? replacePlaceholders(selectedTemplate.body, invoice, clientData, workspace)
+      : "";
+
+    const handleResend = async () => {
+      if (!selectedTemplateId) return;
+
+      try {
+        setResending(true);
+
+        const response = await fetch(`/api/invoices/${invoice.id}/resend`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ templateId: selectedTemplateId }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || "Failed to resend email");
+        }
+
+        // Update local state with updated invoice
+        if (data.invoice) {
+          setAllInvoices((prev) =>
+            prev.map((inv) => (inv.id === invoice.id ? data.invoice : inv))
+          );
+        }
+
+        const template = availableTemplates.find((t) => t.templateId === selectedTemplateId);
+        const clientName = getClientName(invoice.clientId);
+
+        toast({
+          title: "Email resent",
+          description: `We've resent "${template?.label || selectedTemplateId}" to ${clientName}.`,
+        });
+
+        onOpenChange(false);
+        setSelectedTemplateId("");
+      } catch (error) {
+        console.error("Error resending email:", error);
+        toast({
+          variant: "destructive",
+          title: "Failed to resend email",
+          description: error.message,
+        });
+      } finally {
+        setResending(false);
+      }
+    };
+
+    return (
+      <AlertDialog open={open} onOpenChange={onOpenChange}>
+        <AlertDialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Resend invoice email</AlertDialogTitle>
+            <AlertDialogDescription>
+              Choose which email you want to resend for this invoice.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-4">
+            {/* Template selection */}
+            <RadioGroup value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+              <div className="space-y-2">
+                {availableTemplates.map((template) => (
+                  <div
+                    key={template.templateId}
+                    className={`flex items-start space-x-3 border rounded-lg p-3 cursor-pointer transition-colors ${
+                      selectedTemplateId === template.templateId
+                        ? "border-blue-500 bg-blue-50"
+                        : "hover:bg-muted/50"
+                    }`}
+                    onClick={() => setSelectedTemplateId(template.templateId)}
+                  >
+                    <RadioGroupItem value={template.templateId} id={template.templateId} />
+                    <Label
+                      htmlFor={template.templateId}
+                      className="flex-1 cursor-pointer space-y-1"
+                    >
+                      <div className="font-medium">{template.label}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {template.wasSent
+                          ? `Last sent ${new Date(template.sentAt).toLocaleString()}`
+                          : "Not sent yet"}
+                      </div>
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </RadioGroup>
+
+            {/* Email preview */}
+            {selectedTemplateId && (
+              <div className="space-y-3 border-t pt-4">
+                <div className="text-sm font-semibold text-muted-foreground">Email Preview</div>
+                
+                {/* Subject preview */}
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">Subject:</div>
+                  <div className="rounded-lg border bg-gray-50 p-2 text-sm">
+                    {previewSubject}
+                  </div>
+                </div>
+
+                {/* Body preview */}
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">Message:</div>
+                  <div className="rounded-lg border bg-white p-3 text-sm whitespace-pre-wrap max-h-60 overflow-y-auto">
+                    {previewBody}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={resending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleResend}
+              disabled={!selectedTemplateId || resending}
+            >
+              {resending ? "Sending..." : "Send email"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    );
+  }
 
   // Helper component to render reminder timeline for an invoice
   function ReminderTimeline({ invoice }) {
@@ -510,6 +742,15 @@ export default function InvoicesPage() {
                             <Pencil className="mr-2 h-4 w-4" />
                             Edit invoice
                           </DropdownMenuItem>
+                          {canResendInvoice(invoice) && (
+                            <DropdownMenuItem
+                              onClick={() => openResendDialog(invoice)}
+                              className="cursor-pointer"
+                            >
+                              <Send className="mr-2 h-4 w-4" />
+                              Resend invoice
+                            </DropdownMenuItem>
+                          )}
                           {invoice.status !== "paid" && (
                             <DropdownMenuItem
                               onClick={() => handleMarkAsPaid(invoice)}
@@ -569,6 +810,13 @@ export default function InvoicesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Resend Email Dialog */}
+      <ResendEmailDialog
+        open={resendDialogOpen}
+        onOpenChange={setResendDialogOpen}
+        invoice={invoiceToResend}
+      />
     </div>
   );
 }

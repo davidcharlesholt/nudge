@@ -175,9 +175,12 @@ export async function POST(req) {
           throw new Error("Client not found");
         }
 
-        // Fetch workspace for sender name
+        // Fetch workspace for sender names
         const workspace = await db.collection("workspaces").findOne({ userId });
-        const yourName = workspace?.displayName || "Nudge";
+        const companyName = workspace?.workspaceName || workspace?.companyName;
+        const displayName = workspace?.displayName;
+        const fromName = companyName || displayName || "Nudge";
+        const yourName = displayName || companyName || "Nudge";
 
         // Get initial template
         const initialTemplate = templates.find((t) => t.id === "initial");
@@ -195,6 +198,7 @@ export async function POST(req) {
             dueDate: doc.dueDate,
             paymentLink: doc.paymentLink,
             yourName,
+            fromName,
           });
         }
       } catch (emailError) {
