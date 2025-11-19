@@ -3,7 +3,7 @@ import { ObjectId } from "mongodb";
 import { auth } from "@clerk/nextjs/server";
 import { sendInvoiceEmail } from "@/lib/email";
 
-export async function GET() {
+export async function GET(req) {
   try {
     // Get the current user's ID from Clerk
     const { userId } = await auth();
@@ -16,11 +16,36 @@ export async function GET() {
       );
     }
 
+    // Parse filter from query params
+    const { searchParams } = new URL(req.url);
+    const filter = searchParams.get("filter") || "all";
+
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB || "nudge");
+    
+    // Build query based on filter
+    let query = { userId };
+    
+    if (filter === "draft") {
+      query.status = "draft";
+    } else if (filter === "sent") {
+      query.status = "sent";
+    } else if (filter === "paid") {
+      query.status = "paid";
+    } else if (filter === "pastdue") {
+      // Past due: not paid and due date is before today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split("T")[0];
+      
+      query.status = { $ne: "paid" };
+      query.dueDate = { $lt: todayStr };
+    }
+    // else filter === "all", no additional filters
+    
     const invoices = await db
       .collection("invoices")
-      .find({ userId })
+      .find(query)
       .sort({ createdAt: -1 })
       .toArray();
 

@@ -17,7 +17,7 @@
 export const EMAIL_TEMPLATES = {
   friendly: {
     initial: {
-      subject: "Your invoice for {{amount}}",
+      subject: "Your invoice is ready!",
       body: `Hi {{clientFirstName}},
 
 Hope you're doing well!
@@ -55,7 +55,7 @@ Warmly,
 
 I hope things are going smoothly on your end!
 
-This is just a quick nudge that the invoice for {{amount}} is due in a few days ({{dueDate}}). You can take care of it here:
+This is just a quick reminder that the invoice for {{amount}} is due in a few days ({{dueDate}}). You can take care of it here:
 
 👉 {{paymentLink}}
 
@@ -191,7 +191,7 @@ Thank you,
 {{yourName}}`,
     },
     reminder1: {
-      subject: "Friendly reminder — upcoming invoice due",
+      subject: "Reminder — upcoming invoice due",
       body: `Hi {{clientFirstName}},
 
 This is a quick reminder that the invoice for {{amount}} is due on {{dueDate}}.
@@ -209,7 +209,7 @@ Best regards,
       subject: "Reminder — invoice due soon",
       body: `Hi {{clientFirstName}},
 
-I'm touching base regarding your invoice for {{amount}}, which is due in a few days ({{dueDate}}).
+I'm touching base regarding your invoice for {{amount}}, which is due in a few days on ({{dueDate}}).
 
 Here is the link to submit payment:
 

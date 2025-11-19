@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { requireWorkspace } from "@/lib/workspace";
+import { REMINDER_SCHEDULES } from "@/lib/invoice-templates";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -36,6 +43,7 @@ import { MoreVertical, Pencil, Trash2, CheckCircle2 } from "lucide-react";
 
 export default function InvoicesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [clients, setClients] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,10 +52,13 @@ export default function InvoicesPage() {
   const [invoiceToDelete, setInvoiceToDelete] = useState(null);
   const { toast } = useToast();
 
+  // Get current filter from URL, default to "all"
+  const currentFilter = searchParams.get("filter") || "all";
+
   useEffect(() => {
     checkWorkspaceAndFetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [currentFilter]);
 
   async function checkWorkspaceAndFetch() {
     const workspace = await requireWorkspace(router);
@@ -60,10 +71,10 @@ export default function InvoicesPage() {
       setLoading(true);
       setError(null);
 
-      // Fetch clients and invoices in parallel
+      // Fetch clients and invoices in parallel with filter param
       const [clientsRes, invoicesRes] = await Promise.all([
         fetch("/api/clients"),
-        fetch("/api/invoices"),
+        fetch(`/api/invoices?filter=${currentFilter}`),
       ]);
 
       const clientsData = await clientsRes.json();
@@ -85,6 +96,18 @@ export default function InvoicesPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleFilterChange(newFilter) {
+    // Update URL with new filter
+    const params = new URLSearchParams(searchParams.toString());
+    if (newFilter === "all") {
+      params.delete("filter");
+    } else {
+      params.set("filter", newFilter);
+    }
+    const newUrl = params.toString() ? `?${params.toString()}` : "/invoices";
+    router.push(newUrl);
   }
 
   function openDeleteDialog(invoice) {
@@ -183,6 +206,101 @@ export default function InvoicesPage() {
     return `$${dollars}`;
   }
 
+  // Helper to check if invoice is past due
+  function isPastDue(invoice) {
+    return (
+      invoice.status !== "paid" &&
+      new Date(invoice.dueDate) < new Date()
+    );
+  }
+
+  // Helper component to render reminder timeline for an invoice
+  function ReminderTimeline({ invoice }) {
+    // Skip if no reminder schedule
+    if (!invoice.reminderSchedule) return null;
+
+    const scheduleConfig = REMINDER_SCHEDULES[invoice.reminderSchedule];
+    if (!scheduleConfig) return null;
+
+    const remindersSent = invoice.remindersSent || [];
+
+    // Get template labels (simple names)
+    const getSimpleLabel = (id) => {
+      if (id === "initial") return "Initial";
+      if (id === "reminder1") return "Reminder 1";
+      if (id === "reminder2") return "Reminder 2";
+      if (id === "reminder3") return "Reminder 3";
+      if (id === "reminder4") return "Reminder 4";
+      return id;
+    };
+
+    // Check if a reminder was sent
+    const getReminderStatus = (templateId) => {
+      // Special case for "initial" - it's sent if invoice status is "sent", "paid", or "overdue"
+      if (templateId === "initial") {
+        const sentFromArray = remindersSent.find((r) => r.id === templateId);
+        if (sentFromArray) return sentFromArray;
+        
+        // If invoice is sent/paid/overdue, initial was sent (use sentAt or fallback)
+        if (["sent", "paid", "overdue"].includes(invoice.status)) {
+          return {
+            id: "initial",
+            sentAt: invoice.sentAt || invoice.createdAt,
+          };
+        }
+      }
+      
+      return remindersSent.find((r) => r.id === templateId);
+    };
+
+    // Format sent date
+    const formatSentDate = (sentAt) => {
+      if (!sentAt) return "";
+      const date = new Date(sentAt);
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    };
+
+    return (
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <span className="text-xs text-muted-foreground mr-1">Timeline:</span>
+        {scheduleConfig.templates.map((template) => {
+          const sentInfo = getReminderStatus(template.id);
+          const isSent = !!sentInfo;
+
+          return (
+            <div
+              key={template.id}
+              className={`
+                inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium
+                ${
+                  isSent
+                    ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                    : "border border-muted text-muted-foreground bg-background"
+                }
+              `}
+              title={
+                isSent
+                  ? `Sent ${formatSentDate(sentInfo.sentAt)}`
+                  : "Not sent yet"
+              }
+            >
+              {getSimpleLabel(template.id)}
+              {isSent && (
+                <span className="ml-1 text-[10px] opacity-70">
+                  ✓
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div>
       {/* Page Header */}
@@ -202,6 +320,17 @@ export default function InvoicesPage() {
           <Link href="/invoices/new">Create Invoice</Link>
         </Button>
       </div>
+
+      {/* Filter Tabs */}
+      <Tabs value={currentFilter} onValueChange={handleFilterChange} className="mb-6">
+        <TabsList>
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="draft">Draft</TabsTrigger>
+          <TabsTrigger value="sent">Sent</TabsTrigger>
+          <TabsTrigger value="paid">Paid</TabsTrigger>
+          <TabsTrigger value="pastdue">Past Due</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Loading state */}
       {loading && (
@@ -251,71 +380,85 @@ export default function InvoicesPage() {
             </TableHeader>
             <TableBody>
               {invoices.map((invoice) => (
-                <TableRow key={invoice.id}>
-                  <TableCell className="font-medium">
-                    {getClientName(invoice.clientId)}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {formatAmount(invoice.amountCents)}
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={`
-                        inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium
-                        ${
-                          invoice.status === "paid"
-                            ? "bg-green-100 text-green-800"
-                            : invoice.status === "overdue"
-                            ? "bg-red-100 text-red-800"
-                            : invoice.status === "sent"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-gray-100 text-gray-800"
-                        }
-                      `}
-                    >
-                      {invoice.status}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {new Date(invoice.dueDate).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                          <span className="sr-only">Open menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => handleEdit(invoice.id)}
-                          className="cursor-pointer"
+                <React.Fragment key={invoice.id}>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      {getClientName(invoice.clientId)}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {formatAmount(invoice.amountCents)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`
+                            inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium
+                            ${
+                              invoice.status === "paid"
+                                ? "bg-green-100 text-green-800"
+                                : invoice.status === "overdue"
+                                ? "bg-red-100 text-red-800"
+                                : invoice.status === "sent"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-gray-100 text-gray-800"
+                            }
+                          `}
                         >
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit invoice
-                        </DropdownMenuItem>
-                        {invoice.status !== "paid" && (
+                          {invoice.status}
+                        </span>
+                        {isPastDue(invoice) && (
+                          <Badge variant="destructive">Past Due</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {new Date(invoice.dueDate).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">Open menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() => handleMarkAsPaid(invoice)}
+                            onClick={() => handleEdit(invoice.id)}
                             className="cursor-pointer"
                           >
-                            <CheckCircle2 className="mr-2 h-4 w-4" />
-                            Mark as Paid
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit invoice
                           </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => openDeleteDialog(invoice)}
-                          className="cursor-pointer text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete invoice
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
+                          {invoice.status !== "paid" && (
+                            <DropdownMenuItem
+                              onClick={() => handleMarkAsPaid(invoice)}
+                              className="cursor-pointer"
+                            >
+                              <CheckCircle2 className="mr-2 h-4 w-4" />
+                              Mark as Paid
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => openDeleteDialog(invoice)}
+                            className="cursor-pointer text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete invoice
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                  {invoice.reminderSchedule && (
+                    <TableRow className="border-none">
+                      <TableCell colSpan={5} className="py-2 bg-muted/30">
+                        <ReminderTimeline invoice={invoice} />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
               ))}
             </TableBody>
           </Table>
