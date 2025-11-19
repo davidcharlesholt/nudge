@@ -5,13 +5,15 @@ if (!process.env.RESEND_API_KEY) {
   throw new Error("Missing RESEND_API_KEY in environment");
 }
 
+if (!process.env.RESEND_FROM_ADDRESS) {
+  throw new Error("Missing RESEND_FROM_ADDRESS in environment");
+}
+
 export const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function sendTestEmail(to) {
   return resend.emails.send({
-    from: `${process.env.RESEND_FROM_NAME ?? "Nudge"} <${
-      process.env.RESEND_FROM_EMAIL
-    }>`,
+    from: process.env.RESEND_FROM_ADDRESS,
     to,
     subject: "Nudge test email",
     text: "If you're seeing this, Resend is wired up correctly 🎉",
@@ -68,9 +70,7 @@ export async function sendInvoiceEmail({
   const htmlBody = finalBody.replace(/\n/g, "<br>");
 
   const emailData = {
-    from: `${process.env.RESEND_FROM_NAME ?? "Nudge"} <${
-      process.env.RESEND_FROM_EMAIL
-    }>`,
+    from: process.env.RESEND_FROM_ADDRESS,
     to: [to],
     subject: finalSubject,
     html: `<div style="font-family: sans-serif; line-height: 1.6; color: #333;">${htmlBody}</div>`,
