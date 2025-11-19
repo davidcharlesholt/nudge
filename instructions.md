@@ -96,6 +96,7 @@ Invoices (invoices collection) – to be implemented
   dueDate: string,         // ISO date string
   status: "draft" | "sent" | "paid" | "overdue",
   notes?: string,
+  remindersSent?: string[], // Array of template IDs that have been sent (e.g. ["reminder-1", "reminder-2"])
   createdAt: Date,
   updatedAt: Date
 }

@@ -49,6 +49,7 @@ export async function GET(_req, context) {
         id: invoiceDoc._id.toString(),
         _id: invoiceDoc._id.toString(),
         clientId: invoiceDoc.clientId.toString(),
+        remindersSent: Array.isArray(invoiceDoc.remindersSent) ? invoiceDoc.remindersSent : [],
       },
     });
   } catch (error) {

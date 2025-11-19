@@ -481,15 +481,22 @@ export default function NewInvoicePage() {
 
     const formattedAmount = `$${parseFloat(amount || 0).toFixed(2)}`;
     const dueDateObj = new Date(dueDate);
-    const dayOfWeek = dueDateObj.toLocaleDateString("en-US", {
-      weekday: "long",
-    });
+    const formattedDueDate = isNaN(dueDateObj)
+      ? dueDate
+      : dueDateObj.toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        });
+    const dayOfWeek = isNaN(dueDateObj)
+      ? ""
+      : dueDateObj.toLocaleDateString("en-US", { weekday: "long" });
 
     return text
       .replace(/\{\{clientName\}\}/g, clientData?.fullName || "")
       .replace(/\{\{clientFirstName\}\}/g, clientData?.firstName || "")
       .replace(/\{\{amount\}\}/g, formattedAmount)
-      .replace(/\{\{dueDate\}\}/g, dueDate || "")
+      .replace(/\{\{dueDate\}\}/g, formattedDueDate)
       .replace(/\{\{paymentLink\}\}/g, paymentLink || "")
       .replace(/\{\{yourName\}\}/g, workspaceData?.displayName || "")
       .replace(/\{\{dayOfWeek\}\}/g, dayOfWeek);

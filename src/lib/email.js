@@ -47,9 +47,18 @@ export async function sendInvoiceEmail({
   // Format amount as dollars
   const amount = `$${(amountCents / 100).toFixed(2)}`;
 
-  // Get day of week from due date
+  // Parse and format due date
   const dueDateObj = new Date(dueDate);
-  const dayOfWeek = dueDateObj.toLocaleDateString("en-US", { weekday: "long" });
+  const formattedDueDate = isNaN(dueDateObj)
+    ? dueDate
+    : dueDateObj.toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      });
+  const dayOfWeek = isNaN(dueDateObj)
+    ? ""
+    : dueDateObj.toLocaleDateString("en-US", { weekday: "long" });
 
   // Replace placeholders in subject and body
   const replacePlaceholders = (text) => {
@@ -57,7 +66,7 @@ export async function sendInvoiceEmail({
       .replace(/\{\{clientName\}\}/g, client.fullName || "")
       .replace(/\{\{clientFirstName\}\}/g, client.firstName || "")
       .replace(/\{\{amount\}\}/g, amount)
-      .replace(/\{\{dueDate\}\}/g, dueDate)
+      .replace(/\{\{dueDate\}\}/g, formattedDueDate)
       .replace(/\{\{paymentLink\}\}/g, paymentLink)
       .replace(/\{\{yourName\}\}/g, yourName || "")
       .replace(/\{\{dayOfWeek\}\}/g, dayOfWeek);

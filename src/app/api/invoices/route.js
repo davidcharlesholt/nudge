@@ -25,11 +25,13 @@ export async function GET() {
       .toArray();
 
     // Convert _id and clientId to strings and add id field for frontend
+    // Ensure remindersSent defaults to empty array for back-compat
     const invoicesWithStringIds = invoices.map((inv) => ({
       ...inv,
       id: inv._id.toString(),
       _id: inv._id.toString(),
       clientId: inv.clientId.toString(),
+      remindersSent: Array.isArray(inv.remindersSent) ? inv.remindersSent : [],
     }));
 
     return Response.json({ ok: true, invoices: invoicesWithStringIds });
@@ -123,6 +125,7 @@ export async function POST(req) {
       emailFlow: emailFlow || "custom",
       reminderSchedule: reminderSchedule || "standard",
       templates: templates || [],
+      remindersSent: Array.isArray(body.remindersSent) ? body.remindersSent : [],
       createdAt: now,
       updatedAt: now,
     };

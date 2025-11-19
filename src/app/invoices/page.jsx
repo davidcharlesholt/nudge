@@ -32,7 +32,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, CheckCircle2 } from "lucide-react";
 
 export default function InvoicesPage() {
   const router = useRouter();
@@ -130,6 +130,45 @@ export default function InvoicesPage() {
 
   function handleEdit(invoiceId) {
     window.location.href = `/invoices/${invoiceId}/edit`;
+  }
+
+  async function handleMarkAsPaid(invoice) {
+    try {
+      // Optimistically update UI
+      setInvoices((prev) =>
+        prev.map((inv) =>
+          inv.id === invoice.id
+            ? { ...inv, status: "paid", paidAt: new Date().toISOString() }
+            : inv
+        )
+      );
+
+      const res = await fetch(`/api/invoices/${invoice.id}/mark-paid`, {
+        method: "PATCH",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        // Revert optimistic update on error
+        setInvoices((prev) =>
+          prev.map((inv) => (inv.id === invoice.id ? invoice : inv))
+        );
+        throw new Error(data.error || "Failed to mark invoice as paid");
+      }
+
+      toast({
+        title: "Invoice marked as paid",
+        description: "Invoice has been marked as paid.",
+      });
+    } catch (err) {
+      console.error("Error marking invoice as paid:", err);
+      toast({
+        variant: "destructive",
+        title: "Failed to mark invoice as paid",
+        description: err.message,
+      });
+    }
   }
 
   // Helper to get client name by ID
@@ -256,6 +295,15 @@ export default function InvoicesPage() {
                           <Pencil className="mr-2 h-4 w-4" />
                           Edit invoice
                         </DropdownMenuItem>
+                        {invoice.status !== "paid" && (
+                          <DropdownMenuItem
+                            onClick={() => handleMarkAsPaid(invoice)}
+                            className="cursor-pointer"
+                          >
+                            <CheckCircle2 className="mr-2 h-4 w-4" />
+                            Mark as Paid
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => openDeleteDialog(invoice)}
