@@ -1,18 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import React, { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { requireWorkspace } from "@/lib/workspace";
 import { REMINDER_SCHEDULES } from "@/lib/invoice-templates";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -27,6 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -39,26 +35,30 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { MoreVertical, Pencil, Trash2, CheckCircle2 } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, CheckCircle2, ChevronDown } from "lucide-react";
 
 export default function InvoicesPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [clients, setClients] = useState([]);
-  const [invoices, setInvoices] = useState([]);
+  const [allInvoices, setAllInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState(null);
   const { toast } = useToast();
 
-  // Get current filter from URL, default to "all"
-  const currentFilter = searchParams.get("filter") || "all";
+  // Status filter state - all selected by default
+  const [selectedStatuses, setSelectedStatuses] = useState([
+    "draft",
+    "sent",
+    "paid",
+    "past-due",
+  ]);
 
   useEffect(() => {
     checkWorkspaceAndFetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentFilter]);
+  }, []);
 
   async function checkWorkspaceAndFetch() {
     const workspace = await requireWorkspace(router);
@@ -71,10 +71,10 @@ export default function InvoicesPage() {
       setLoading(true);
       setError(null);
 
-      // Fetch clients and invoices in parallel with filter param
+      // Fetch all clients and invoices (no filter param)
       const [clientsRes, invoicesRes] = await Promise.all([
         fetch("/api/clients"),
-        fetch(`/api/invoices?filter=${currentFilter}`),
+        fetch("/api/invoices"),
       ]);
 
       const clientsData = await clientsRes.json();
@@ -89,7 +89,7 @@ export default function InvoicesPage() {
       }
 
       setClients(clientsData.clients || []);
-      setInvoices(invoicesData.invoices || []);
+      setAllInvoices(invoicesData.invoices || []);
     } catch (err) {
       console.error("Error fetching data:", err);
       setError(err.message);
@@ -98,17 +98,33 @@ export default function InvoicesPage() {
     }
   }
 
-  function handleFilterChange(newFilter) {
-    // Update URL with new filter
-    const params = new URLSearchParams(searchParams.toString());
-    if (newFilter === "all") {
-      params.delete("filter");
-    } else {
-      params.set("filter", newFilter);
-    }
-    const newUrl = params.toString() ? `?${params.toString()}` : "/invoices";
-    router.push(newUrl);
+  // Toggle status filter
+  function toggleStatus(status) {
+    setSelectedStatuses((prev) => {
+      if (prev.includes(status)) {
+        return prev.filter((s) => s !== status);
+      } else {
+        return [...prev, status];
+      }
+    });
   }
+
+  // Filter invoices based on selected statuses
+  const filteredInvoices = useMemo(() => {
+    return allInvoices.filter((invoice) => {
+      // Check if invoice is past due
+      const isPastDueInvoice =
+        invoice.status === "sent" &&
+        !invoice.paidAt &&
+        new Date(invoice.dueDate) < new Date();
+
+      // Check if invoice matches any selected status
+      if (selectedStatuses.includes(invoice.status)) return true;
+      if (selectedStatuses.includes("past-due") && isPastDueInvoice) return true;
+
+      return false;
+    });
+  }, [allInvoices, selectedStatuses]);
 
   function openDeleteDialog(invoice) {
     setInvoiceToDelete(invoice);
@@ -130,7 +146,7 @@ export default function InvoicesPage() {
       }
 
       // Remove from local state
-      setInvoices((prev) =>
+      setAllInvoices((prev) =>
         prev.filter((inv) => inv.id !== invoiceToDelete.id)
       );
 
@@ -158,7 +174,7 @@ export default function InvoicesPage() {
   async function handleMarkAsPaid(invoice) {
     try {
       // Optimistically update UI
-      setInvoices((prev) =>
+      setAllInvoices((prev) =>
         prev.map((inv) =>
           inv.id === invoice.id
             ? { ...inv, status: "paid", paidAt: new Date().toISOString() }
@@ -174,7 +190,7 @@ export default function InvoicesPage() {
 
       if (!res.ok || !data.ok) {
         // Revert optimistic update on error
-        setInvoices((prev) =>
+        setAllInvoices((prev) =>
           prev.map((inv) => (inv.id === invoice.id ? invoice : inv))
         );
         throw new Error(data.error || "Failed to mark invoice as paid");
@@ -213,6 +229,30 @@ export default function InvoicesPage() {
       new Date(invoice.dueDate) < new Date()
     );
   }
+
+  // Status configuration with colors
+  const statusConfig = [
+    {
+      value: "draft",
+      label: "Draft",
+      dotColor: "bg-gray-400",
+    },
+    {
+      value: "sent",
+      label: "Sent",
+      dotColor: "bg-blue-500",
+    },
+    {
+      value: "paid",
+      label: "Paid",
+      dotColor: "bg-green-500",
+    },
+    {
+      value: "past-due",
+      label: "Past Due",
+      dotColor: "bg-red-500",
+    },
+  ];
 
   // Helper component to render reminder timeline for an invoice
   function ReminderTimeline({ invoice }) {
@@ -313,24 +353,53 @@ export default function InvoicesPage() {
             Manage invoices and track payments
           </p>
         </div>
-        <Button
-          asChild
-          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
-        >
-          <Link href="/invoices/new">Create Invoice</Link>
-        </Button>
-      </div>
+        <div className="flex items-center gap-2">
+          {/* Status Filter Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className={`
+                  ${
+                    selectedStatuses.length < statusConfig.length
+                      ? "border-blue-500"
+                      : ""
+                  }
+                `}
+              >
+                Status
+                <span className="ml-1.5 text-xs text-muted-foreground">
+                  {selectedStatuses.length}/{statusConfig.length}
+                </span>
+                <ChevronDown className="ml-1 h-4 w-4 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[180px]">
+              {statusConfig.map((status) => (
+                <DropdownMenuCheckboxItem
+                  key={status.value}
+                  checked={selectedStatuses.includes(status.value)}
+                  onCheckedChange={() => toggleStatus(status.value)}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-2 h-2 rounded-full ${status.dotColor}`}
+                    />
+                    <span>{status.label}</span>
+                  </div>
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-      {/* Filter Tabs */}
-      <Tabs value={currentFilter} onValueChange={handleFilterChange} className="mb-6">
-        <TabsList>
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="draft">Draft</TabsTrigger>
-          <TabsTrigger value="sent">Sent</TabsTrigger>
-          <TabsTrigger value="paid">Paid</TabsTrigger>
-          <TabsTrigger value="pastdue">Past Due</TabsTrigger>
-        </TabsList>
-      </Tabs>
+          <Button
+            asChild
+            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
+          >
+            <Link href="/invoices/new">Create Invoice</Link>
+          </Button>
+        </div>
+      </div>
 
       {/* Loading state */}
       {loading && (
@@ -347,7 +416,7 @@ export default function InvoicesPage() {
       )}
 
       {/* Empty State */}
-      {!loading && !error && invoices.length === 0 && (
+      {!loading && !error && filteredInvoices.length === 0 && allInvoices.length === 0 && (
         <Card>
           <div className="flex flex-col items-center justify-center py-12 px-4">
             <p className="text-muted-foreground text-center mb-4">
@@ -363,8 +432,19 @@ export default function InvoicesPage() {
         </Card>
       )}
 
+      {/* No Results from Filter */}
+      {!loading && !error && filteredInvoices.length === 0 && allInvoices.length > 0 && (
+        <Card>
+          <div className="flex flex-col items-center justify-center py-12 px-4">
+            <p className="text-muted-foreground text-center">
+              No invoices match the selected filters.
+            </p>
+          </div>
+        </Card>
+      )}
+
       {/* Invoices Table */}
-      {!loading && !error && invoices.length > 0 && (
+      {!loading && !error && filteredInvoices.length > 0 && (
         <Card>
           <Table>
             <TableHeader>
@@ -379,7 +459,7 @@ export default function InvoicesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {invoices.map((invoice) => (
+              {filteredInvoices.map((invoice) => (
                 <React.Fragment key={invoice.id}>
                   <TableRow>
                     <TableCell className="font-medium">
