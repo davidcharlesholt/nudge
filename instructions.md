@@ -187,8 +187,8 @@ Brand / Primary
 • primary = #042C4C (deep navy)
 • primary-foreground = #FFFFFF
 
-Accent gradient – for special bits (badges, highlights, not backgrounds everywhere)
-• Gradient stops: #92278F → #82399A → #6F50A9 → #5570BD → #3499D6 → #27AAE1
+Accent/CTA color – for special bits/buttons (badges, highlights, not backgrounds everywhere)
+#27AAE1
 
 Neutrals
 Use soft grays for background and borders:

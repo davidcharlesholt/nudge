@@ -252,7 +252,7 @@ export default function InvoicesPage() {
     {
       value: "sent",
       label: "Sent",
-      dotColor: "bg-blue-500",
+      dotColor: "bg-[#27AAE1]",
     },
     {
       value: "paid",
@@ -780,7 +780,8 @@ export default function InvoicesPage() {
 
           <Button
             asChild
-            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
+            variant="accent"
+            className="shadow-md"
           >
             <Link href="/invoices/new">Create Invoice</Link>
           </Button>
@@ -810,7 +811,8 @@ export default function InvoicesPage() {
             </p>
             <Button
               asChild
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
+              variant="accent"
+              className="shadow-md"
             >
               <Link href="/invoices/new">Create Your First Invoice</Link>
             </Button>

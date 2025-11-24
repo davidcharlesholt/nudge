@@ -7,6 +7,12 @@ import Image from "next/image";
 import { Settings } from "lucide-react";
 import { UserButton, useUser } from "@clerk/nextjs";
 import { getWorkspace } from "@/lib/workspace";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function Header() {
   const pathname = usePathname();
@@ -87,14 +93,36 @@ export default function Header() {
                     {workspaceName}
                   </span>
                 )}
-                <Link
-                  href="/settings"
-                  className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  title="Settings"
-                >
-                  <Settings className="h-5 w-5" />
-                  <span className="sr-only">Settings</span>
-                </Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none"
+                    title="Settings"
+                  >
+                    <Settings className="h-5 w-5" />
+                    <span className="sr-only">Settings</span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="min-w-[200px] bg-card text-foreground border-border"
+                  >
+                    <DropdownMenuItem asChild className="hover:bg-muted">
+                      <Link
+                        href="/settings/account"
+                        className="cursor-pointer"
+                      >
+                        Account & Login
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="hover:bg-muted">
+                      <Link
+                        href="/settings/business"
+                        className="cursor-pointer"
+                      >
+                        Business Settings
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <UserButton
                   appearance={{
                     elements: {

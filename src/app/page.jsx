@@ -120,7 +120,8 @@ export default function DashboardPage() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button 
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
+              variant="accent"
+              className="shadow-md"
             >
               <Plus className="mr-2 h-4 w-4" />
               New

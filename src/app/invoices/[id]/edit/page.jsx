@@ -219,9 +219,10 @@ export default function EditInvoicePage() {
   }
 
   function confirmScheduleChange() {
+    // Use current editor tone when changing schedule
     const newTemplates = initializeTemplatesForSchedule(
       pendingSchedule,
-      "friendly"
+      editorTone
     );
     setTemplates(newTemplates);
     setSavedTemplates(newTemplates);
@@ -965,7 +966,8 @@ export default function EditInvoicePage() {
                 type="button"
                 onClick={handlePreviewAndSend}
                 disabled={submitting || sending}
-                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
+                variant="accent"
+                className="shadow-md"
               >
                 Preview & Send
               </Button>
@@ -1207,7 +1209,8 @@ export default function EditInvoicePage() {
             <Button
               onClick={handleActualSend}
               disabled={sending}
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
+              variant="accent"
+              className="shadow-md"
             >
               {sending ? "Sending..." : "Send Invoice"}
             </Button>

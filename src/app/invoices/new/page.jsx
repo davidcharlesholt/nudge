@@ -101,6 +101,7 @@ export default function NewInvoicePage() {
   const [savedFlows, setSavedFlows] = useState([]);
 
   // Message & Tone state
+  // Default tone order: invoice tone → workspace.defaultEmailTone → 'friendly'
   const [reminderSchedule, setReminderSchedule] = useState("standard");
   const [templates, setTemplates] = useState(() =>
     initializeTemplatesForSchedule("standard", "friendly")
@@ -109,6 +110,7 @@ export default function NewInvoicePage() {
     initializeTemplatesForSchedule("standard", "friendly")
   );
   const [selectedTemplateId, setSelectedTemplateId] = useState("initial");
+  const [initialToneSet, setInitialToneSet] = useState(false);
 
   // Editor state
   const [editorTone, setEditorTone] = useState("friendly");
@@ -176,14 +178,27 @@ export default function NewInvoicePage() {
           setClientId(preselectedClientId);
         }
 
-        // Fetch workspace and auto-populate due date based on default payment terms
+        // Fetch workspace and auto-populate due date and tone based on defaults
         const workspaceData = await getWorkspace();
         setWorkspace(workspaceData);
+        
+        // Auto-populate due date based on default payment terms
         if (workspaceData && workspaceData.defaultDueDateTerms) {
           const calculatedDueDate = calculateDueDateFromTerms(
             workspaceData.defaultDueDateTerms
           );
           setDueDate(calculatedDueDate);
+        }
+        
+        // Initialize tone and templates with workspace default
+        // Default tone order: workspace.defaultEmailTone → 'friendly'
+        if (workspaceData && workspaceData.defaultEmailTone && !initialToneSet) {
+          const defaultTone = workspaceData.defaultEmailTone;
+          setEditorTone(defaultTone);
+          const initialTemplates = initializeTemplatesForSchedule("standard", defaultTone);
+          setTemplates(initialTemplates);
+          setSavedTemplates(initialTemplates);
+          setInitialToneSet(true);
         }
       } catch (err) {
         console.error("Error fetching clients:", err);
@@ -217,9 +232,10 @@ export default function NewInvoicePage() {
   }
 
   function confirmScheduleChange() {
+    // Use current editor tone when changing schedule
     const newTemplates = initializeTemplatesForSchedule(
       pendingSchedule,
-      "friendly"
+      editorTone
     );
     setTemplates(newTemplates);
     setSavedTemplates(newTemplates);
@@ -944,7 +960,8 @@ export default function NewInvoicePage() {
             <Button
               onClick={handlePreviewAndSend}
               disabled={submitting || clients.length === 0}
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
+              variant="accent"
+              className="shadow-md"
             >
               Preview & Send
             </Button>
@@ -1190,7 +1207,8 @@ export default function NewInvoicePage() {
             <Button
               onClick={handleActualSend}
               disabled={submitting}
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
+              variant="accent"
+              className="shadow-md"
             >
               {submitting ? "Sending..." : "Send Invoice"}
             </Button>

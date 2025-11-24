@@ -332,7 +332,7 @@ export default function OnboardingPage() {
                     <SelectContent>
                       <SelectItem value="friendly">Friendly</SelectItem>
                       <SelectItem value="professional">Professional</SelectItem>
-                      <SelectItem value="firm-but-polite">
+                      <SelectItem value="firm">
                         Firm but polite
                       </SelectItem>
                     </SelectContent>

@@ -179,7 +179,8 @@ export default function NewClientPage() {
               <Button 
                 type="submit" 
                 disabled={submitting}
-                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
+                variant="accent"
+                className="shadow-md"
               >
                 {submitting ? "Adding..." : "Add Client"}
               </Button>

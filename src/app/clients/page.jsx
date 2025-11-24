@@ -194,7 +194,8 @@ export default function ClientsPage() {
         </div>
         <Button
           asChild
-          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
+          variant="accent"
+          className="shadow-md"
         >
           <Link href="/clients/new">Add New Client</Link>
         </Button>

@@ -24,9 +24,9 @@
     --muted: 220 13% 91%;              /* #E5E7EB */
     --muted-foreground: 220 9% 46%;    /* #6B7280 */
     
-    /* Accent - Can use gradient colors for special elements */
-    --accent: 220 13% 91%;             /* #E5E7EB */
-    --accent-foreground: 222 47% 11%;  /* #0F172A */
+    /* Accent - Nudge CTA Color */
+    --accent: 197 75% 52%;             /* #27AAE1 */
+    --accent-foreground: 0 0% 100%;    /* #FFFFFF */
     
     /* Status Colors */
     --success: 142 71% 37%;            /* #16A34A */
@@ -55,8 +55,8 @@
     --secondary-foreground: 222 47% 11%;
     --muted: 220 13% 91%;
     --muted-foreground: 220 9% 46%;
-    --accent: 220 13% 91%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 197 75% 52%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     --border: 220 13% 91%;
