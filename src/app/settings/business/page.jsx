@@ -28,7 +28,7 @@ export default function BusinessSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   // Form data
   const [companyName, setCompanyName] = useState("");
@@ -43,15 +43,11 @@ export default function BusinessSettingsPage() {
         const workspace = await getWorkspace();
         if (workspace) {
           // Handle both old (workspaceName) and new (companyName) field names
-          setCompanyName(
-            workspace.companyName || workspace.workspaceName || ""
-          );
+          setCompanyName(workspace.companyName || workspace.workspaceName || "");
           setDisplayName(workspace.displayName || "");
           setDefaultDueDateTerms(workspace.defaultDueDateTerms || "net-30");
           setDefaultEmailTone(workspace.defaultEmailTone || "friendly");
-          setLastUpdated(
-            workspace.updatedAt ? new Date(workspace.updatedAt) : null
-          );
+          setLastUpdated(workspace.updatedAt ? new Date(workspace.updatedAt) : null);
         }
       } catch (err) {
         console.error("Error loading workspace:", err);
@@ -63,7 +59,7 @@ export default function BusinessSettingsPage() {
     loadWorkspace();
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     setSubmitting(true);
@@ -98,8 +94,7 @@ export default function BusinessSettingsPage() {
       router.refresh();
     } catch (err) {
       console.error("Error updating workspace:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "An error occurred";
+      const errorMessage = err instanceof Error ? err.message : "An error occurred";
       setError(errorMessage);
       toast({
         variant: "destructive",
@@ -178,14 +173,15 @@ export default function BusinessSettingsPage() {
                   disabled={submitting}
                 />
                 <p className="text-xs text-muted-foreground">
-                  This will appear as the sender name in your invoice emails.
-                  Use your business name or your full name.
+                  This will appear as the sender name in your invoice emails. Use your business name or your full name.
                 </p>
               </div>
 
               {/* Display Name */}
               <div className="space-y-2">
-                <Label htmlFor="displayName">Email Sign-Off Name</Label>
+                <Label htmlFor="displayName">
+                  Email Sign-Off Name
+                </Label>
                 <Input
                   id="displayName"
                   type="text"
@@ -195,8 +191,7 @@ export default function BusinessSettingsPage() {
                   disabled={submitting}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Used inside email sign-offs (e.g., &quot;Best, Sarah&quot;).
-                  Optional.
+                  Used inside email sign-offs (e.g., &quot;Best, Sarah&quot;). Optional.
                 </p>
               </div>
 
@@ -239,7 +234,9 @@ export default function BusinessSettingsPage() {
                   <SelectContent>
                     <SelectItem value="friendly">Friendly</SelectItem>
                     <SelectItem value="professional">Professional</SelectItem>
-                    <SelectItem value="firm">Firm but polite</SelectItem>
+                    <SelectItem value="firm">
+                      Firm but polite
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
@@ -282,3 +279,4 @@ export default function BusinessSettingsPage() {
     </div>
   );
 }
+
