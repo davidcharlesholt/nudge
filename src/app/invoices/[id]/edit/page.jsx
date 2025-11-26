@@ -608,6 +608,37 @@ export default function EditInvoicePage() {
       {/* Edit Form */}
       {!loading && !error && (
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Locked Invoice Banner */}
+          {status === "sent" && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <div className="flex gap-3">
+                <div className="shrink-0">
+                  <svg
+                    className="h-5 w-5 text-amber-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth="2"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+                    />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-amber-900">
+                    This invoice has already been sent
+                  </p>
+                  <p className="mt-1 text-sm text-amber-700">
+                    Amount, due date, client, and payment link are locked. To make changes, duplicate this invoice as a new draft from the All Invoices page.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Invoice Details Card */}
           <Card>
             <CardHeader>
@@ -622,7 +653,12 @@ export default function EditInvoicePage() {
                 <Label htmlFor="clientId">
                   Client <span className="text-destructive">*</span>
                 </Label>
-                <Select value={clientId} onValueChange={setClientId} required>
+                <Select
+                  value={clientId}
+                  onValueChange={setClientId}
+                  required
+                  disabled={status === "sent"}
+                >
                   <SelectTrigger id="clientId">
                     <SelectValue placeholder="Select a client" />
                   </SelectTrigger>
@@ -698,6 +734,7 @@ export default function EditInvoicePage() {
                   onChange={(e) => setAmount(e.target.value)}
                   required
                   placeholder="100.00"
+                  disabled={status === "sent"}
                 />
               </div>
 
@@ -713,6 +750,7 @@ export default function EditInvoicePage() {
                   onChange={(e) => setPaymentLink(e.target.value)}
                   required
                   placeholder="https://…"
+                  disabled={status === "sent"}
                 />
                 <p className="text-xs text-muted-foreground">
                   We&apos;ll insert this link into your invoice emails so
@@ -731,6 +769,7 @@ export default function EditInvoicePage() {
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                   required
+                  disabled={status === "sent"}
                 />
               </div>
 

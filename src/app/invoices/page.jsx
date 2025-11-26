@@ -43,7 +43,16 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { MoreVertical, Pencil, Trash2, CheckCircle2, ChevronDown, Send, ChevronRight } from "lucide-react";
+import {
+  MoreVertical,
+  Pencil,
+  Trash2,
+  CheckCircle2,
+  ChevronDown,
+  Send,
+  ChevronRight,
+  Copy,
+} from "lucide-react";
 
 export default function InvoicesPage() {
   const router = useRouter();
@@ -133,7 +142,8 @@ export default function InvoicesPage() {
 
       // Check if invoice matches any selected status
       if (selectedStatuses.includes(invoice.status)) return true;
-      if (selectedStatuses.includes("past-due") && isPastDueInvoice) return true;
+      if (selectedStatuses.includes("past-due") && isPastDueInvoice)
+        return true;
 
       return false;
     });
@@ -189,6 +199,35 @@ export default function InvoicesPage() {
     window.location.href = `/invoices/${invoiceId}/edit`;
   }
 
+  async function handleDuplicateAsDraft(invoice) {
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}/duplicate`, {
+        method: "POST",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Failed to duplicate invoice");
+      }
+
+      toast({
+        title: "Invoice duplicated",
+        description: "A new draft invoice has been created.",
+      });
+
+      // Redirect to edit page for the new draft
+      router.push(`/invoices/${data.invoice.id}/edit`);
+    } catch (err) {
+      console.error("Error duplicating invoice:", err);
+      toast({
+        variant: "destructive",
+        title: "Failed to duplicate invoice",
+        description: err.message,
+      });
+    }
+  }
+
   async function handleMarkAsPaid(invoice) {
     try {
       // Optimistically update UI
@@ -242,10 +281,7 @@ export default function InvoicesPage() {
 
   // Helper to check if invoice is past due
   function isPastDue(invoice) {
-    return (
-      invoice.status !== "paid" &&
-      new Date(invoice.dueDate) < new Date()
-    );
+    return invoice.status !== "paid" && new Date(invoice.dueDate) < new Date();
   }
 
   // Status configuration with colors
@@ -346,7 +382,10 @@ export default function InvoicesPage() {
       return {
         templateId: template.id,
         label: template.label || template.id,
-        subject: template.subject || template.toneVariants?.friendly?.subject || "No subject",
+        subject:
+          template.subject ||
+          template.toneVariants?.friendly?.subject ||
+          "No subject",
         body: template.body || template.toneVariants?.friendly?.body || "",
         wasSent: sendStatus.wasSent,
         sentAt: sendStatus.sentAt,
@@ -357,12 +396,24 @@ export default function InvoicesPage() {
     const clientData = clients.find((c) => c.id === invoice.clientId);
 
     // Get selected template for preview
-    const selectedTemplate = availableTemplates.find((t) => t.templateId === selectedTemplateId);
+    const selectedTemplate = availableTemplates.find(
+      (t) => t.templateId === selectedTemplateId
+    );
     const previewSubject = selectedTemplate
-      ? replacePlaceholders(selectedTemplate.subject, invoice, clientData, workspace)
+      ? replacePlaceholders(
+          selectedTemplate.subject,
+          invoice,
+          clientData,
+          workspace
+        )
       : "";
     const previewBody = selectedTemplate
-      ? replacePlaceholders(selectedTemplate.body, invoice, clientData, workspace)
+      ? replacePlaceholders(
+          selectedTemplate.body,
+          invoice,
+          clientData,
+          workspace
+        )
       : "";
 
     const handleResend = async () => {
@@ -392,12 +443,16 @@ export default function InvoicesPage() {
           );
         }
 
-        const template = availableTemplates.find((t) => t.templateId === selectedTemplateId);
+        const template = availableTemplates.find(
+          (t) => t.templateId === selectedTemplateId
+        );
         const clientName = getClientName(invoice.clientId);
 
         toast({
           title: "Email resent",
-          description: `We've resent "${template?.label || selectedTemplateId}" to ${clientName}.`,
+          description: `We've resent "${
+            template?.label || selectedTemplateId
+          }" to ${clientName}.`,
         });
 
         onOpenChange(false);
@@ -427,7 +482,10 @@ export default function InvoicesPage() {
 
           <div className="space-y-4">
             {/* Template selection */}
-            <RadioGroup value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+            <RadioGroup
+              value={selectedTemplateId}
+              onValueChange={setSelectedTemplateId}
+            >
               <div className="space-y-2">
                 {availableTemplates.map((template) => (
                   <div
@@ -439,7 +497,10 @@ export default function InvoicesPage() {
                     }`}
                     onClick={() => setSelectedTemplateId(template.templateId)}
                   >
-                    <RadioGroupItem value={template.templateId} id={template.templateId} />
+                    <RadioGroupItem
+                      value={template.templateId}
+                      id={template.templateId}
+                    />
                     <Label
                       htmlFor={template.templateId}
                       className="flex-1 cursor-pointer space-y-1"
@@ -447,7 +508,9 @@ export default function InvoicesPage() {
                       <div className="font-medium">{template.label}</div>
                       <div className="text-xs text-muted-foreground">
                         {template.wasSent
-                          ? `Last sent ${new Date(template.sentAt).toLocaleString()}`
+                          ? `Last sent ${new Date(
+                              template.sentAt
+                            ).toLocaleString()}`
                           : "Not sent yet"}
                       </div>
                     </Label>
@@ -459,11 +522,15 @@ export default function InvoicesPage() {
             {/* Email preview */}
             {selectedTemplateId && (
               <div className="space-y-3 border-t pt-4">
-                <div className="text-sm font-semibold text-muted-foreground">Email Preview</div>
-                
+                <div className="text-sm font-semibold text-muted-foreground">
+                  Email Preview
+                </div>
+
                 {/* Subject preview */}
                 <div className="space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Subject:</div>
+                  <div className="text-xs font-medium text-muted-foreground">
+                    Subject:
+                  </div>
                   <div className="rounded-lg border bg-gray-50 p-2 text-sm">
                     {previewSubject}
                   </div>
@@ -471,7 +538,9 @@ export default function InvoicesPage() {
 
                 {/* Body preview */}
                 <div className="space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Message:</div>
+                  <div className="text-xs font-medium text-muted-foreground">
+                    Message:
+                  </div>
                   <div className="rounded-lg border bg-white p-3 text-sm whitespace-pre-wrap max-h-60 overflow-y-auto">
                     {previewBody}
                   </div>
@@ -518,9 +587,11 @@ export default function InvoicesPage() {
     const getReminderStatus = (templateId) => {
       // Special case for "initial" - it's sent if invoice status is "sent", "paid", or "overdue"
       if (templateId === "initial") {
-        const sentFromArray = remindersSent.find((r) => r.id === templateId || r.templateId === templateId);
+        const sentFromArray = remindersSent.find(
+          (r) => r.id === templateId || r.templateId === templateId
+        );
         if (sentFromArray) return sentFromArray;
-        
+
         // If invoice is sent/paid/overdue, initial was sent (use sentAt or fallback)
         if (["sent", "paid", "overdue"].includes(invoice.status)) {
           return {
@@ -529,8 +600,10 @@ export default function InvoicesPage() {
           };
         }
       }
-      
-      return remindersSent.find((r) => r.id === templateId || r.templateId === templateId);
+
+      return remindersSent.find(
+        (r) => r.id === templateId || r.templateId === templateId
+      );
     };
 
     // Format sent date with time
@@ -577,14 +650,18 @@ export default function InvoicesPage() {
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
             role="button"
             aria-expanded={isExpanded}
-            aria-label={isExpanded ? "Collapse email details" : "Expand email details"}
+            aria-label={
+              isExpanded ? "Collapse email details" : "Expand email details"
+            }
           >
             {isExpanded ? (
               <ChevronDown className="h-3 w-3" />
             ) : (
               <ChevronRight className="h-3 w-3" />
             )}
-            <span className="text-xs text-muted-foreground">Email Activity:</span>
+            <span className="text-xs text-muted-foreground">
+              Email Activity:
+            </span>
           </button>
           <div className="flex flex-wrap items-center gap-1.5">
             {scheduleConfig.templates.map((template) => {
@@ -605,9 +682,7 @@ export default function InvoicesPage() {
                 >
                   {getSimpleLabel(template.id)}
                   {isSent && (
-                    <span className="ml-1 text-[10px] opacity-70">
-                      ✓
-                    </span>
+                    <span className="ml-1 text-[10px] opacity-70">✓</span>
                   )}
                 </div>
               );
@@ -637,23 +712,33 @@ export default function InvoicesPage() {
                 if (invoice.ccEmails && invoice.ccEmails.length > 0) {
                   recipientInfo.push(`CC: ${invoice.ccEmails.join(", ")}`);
                 }
-                const recipientText = recipientInfo.length > 0 ? ` to ${recipientInfo.join(", ")}` : "";
+                const recipientText =
+                  recipientInfo.length > 0
+                    ? ` to ${recipientInfo.join(", ")}`
+                    : "";
 
                 if (template.id === "initial") {
                   // Initial invoice
                   if (isSent && sentInfo.sentAt) {
                     return (
-                      <div key={template.id} className="text-xs text-foreground">
+                      <div
+                        key={template.id}
+                        className="text-xs text-foreground"
+                      >
                         <span className="font-medium">{label}</span>
                         {" — "}
                         <span className="text-muted-foreground">
-                          Sent {formatSentDateTime(sentInfo.sentAt)}{recipientText}
+                          Sent {formatSentDateTime(sentInfo.sentAt)}
+                          {recipientText}
                         </span>
                       </div>
                     );
                   } else {
                     return (
-                      <div key={template.id} className="text-xs text-muted-foreground">
+                      <div
+                        key={template.id}
+                        className="text-xs text-muted-foreground"
+                      >
                         <span className="font-medium">{label}</span>
                         {" — Not sent yet"}
                       </div>
@@ -663,35 +748,51 @@ export default function InvoicesPage() {
                   // Reminder templates
                   if (isSent && sentInfo.sentAt) {
                     return (
-                      <div key={template.id} className="text-xs text-foreground">
+                      <div
+                        key={template.id}
+                        className="text-xs text-foreground"
+                      >
                         <span className="font-medium">{label}</span>
                         {" — "}
                         <span className="text-muted-foreground">
-                          Sent {formatSentDateTime(sentInfo.sentAt)}{recipientText}
+                          Sent {formatSentDateTime(sentInfo.sentAt)}
+                          {recipientText}
                         </span>
                       </div>
                     );
                   } else if (scheduledDate && template.offset != null) {
                     // Future scheduled reminder
                     const offsetDays = Math.abs(template.offset);
-                    const offsetText = template.offset === 0
-                      ? "on due date"
-                      : template.offset < 0
-                      ? `${offsetDays} day${offsetDays > 1 ? "s" : ""} before due date`
-                      : `${offsetDays} day${offsetDays > 1 ? "s" : ""} after due date`;
-                    
+                    const offsetText =
+                      template.offset === 0
+                        ? "on due date"
+                        : template.offset < 0
+                        ? `${offsetDays} day${
+                            offsetDays > 1 ? "s" : ""
+                          } before due date`
+                        : `${offsetDays} day${
+                            offsetDays > 1 ? "s" : ""
+                          } after due date`;
+
                     return (
-                      <div key={template.id} className="text-xs text-muted-foreground">
+                      <div
+                        key={template.id}
+                        className="text-xs text-muted-foreground"
+                      >
                         <span className="font-medium">{label}</span>
                         {" — "}
                         <span>
-                          Scheduled for {formatScheduledDate(scheduledDate)} ({offsetText})
+                          Scheduled for {formatScheduledDate(scheduledDate)} (
+                          {offsetText})
                         </span>
                       </div>
                     );
                   } else {
                     return (
-                      <div key={template.id} className="text-xs text-muted-foreground">
+                      <div
+                        key={template.id}
+                        className="text-xs text-muted-foreground"
+                      >
                         <span className="font-medium">{label}</span>
                         {" — Not sent yet"}
                       </div>
@@ -708,8 +809,7 @@ export default function InvoicesPage() {
           <div className="mt-2 flex items-start gap-1.5 text-xs text-destructive/80">
             <span className="font-medium">⚠</span>
             <div>
-              <span className="font-medium">Last email error:</span>
-              {" "}
+              <span className="font-medium">Last email error:</span>{" "}
               {invoice.lastEmailErrorMessage}
               {invoice.lastEmailErrorAt && (
                 <span className="text-muted-foreground">
@@ -746,20 +846,20 @@ export default function InvoicesPage() {
               Manage invoices and track payments
             </p>
           </div>
-          
+
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             {/* Status Filter Dropdown */}
             <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className={`w-full sm:w-auto min-h-[44px] hover:!bg-white hover:!text-foreground ${
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={`w-full sm:w-auto min-h-[44px] hover:!bg-white hover:!text-foreground ${
                     selectedStatuses.length < statusConfig.length
                       ? "border-blue-500"
                       : ""
                   }
                 `}
-              >
+                >
                   Status
                   <span className="ml-1.5 text-xs text-muted-foreground">
                     {selectedStatuses.length}/{statusConfig.length}
@@ -811,33 +911,35 @@ export default function InvoicesPage() {
       )}
 
       {/* Empty State */}
-      {!loading && !error && filteredInvoices.length === 0 && allInvoices.length === 0 && (
-        <Card>
-          <div className="flex flex-col items-center justify-center py-12 px-4">
-            <p className="text-muted-foreground text-center mb-4">
-              No invoices yet. Create your first invoice to get started!
-            </p>
-            <Button
-              asChild
-              variant="accent"
-              className="shadow-md"
-            >
-              <Link href="/invoices/new">Create Your First Invoice</Link>
-            </Button>
-          </div>
-        </Card>
-      )}
+      {!loading &&
+        !error &&
+        filteredInvoices.length === 0 &&
+        allInvoices.length === 0 && (
+          <Card>
+            <div className="flex flex-col items-center justify-center py-12 px-4">
+              <p className="text-muted-foreground text-center mb-4">
+                No invoices yet. Create your first invoice to get started!
+              </p>
+              <Button asChild variant="accent" className="shadow-md">
+                <Link href="/invoices/new">Create Your First Invoice</Link>
+              </Button>
+            </div>
+          </Card>
+        )}
 
       {/* No Results from Filter */}
-      {!loading && !error && filteredInvoices.length === 0 && allInvoices.length > 0 && (
-        <Card>
-          <div className="flex flex-col items-center justify-center py-12 px-4">
-            <p className="text-muted-foreground text-center">
-              No invoices match the selected filters.
-            </p>
-          </div>
-        </Card>
-      )}
+      {!loading &&
+        !error &&
+        filteredInvoices.length === 0 &&
+        allInvoices.length > 0 && (
+          <Card>
+            <div className="flex flex-col items-center justify-center py-12 px-4">
+              <p className="text-muted-foreground text-center">
+                No invoices match the selected filters.
+              </p>
+            </div>
+          </Card>
+        )}
 
       {/* Invoices List */}
       {!loading && !error && filteredInvoices.length > 0 && (
@@ -845,7 +947,10 @@ export default function InvoicesPage() {
           {/* Mobile Card Layout */}
           <div className="md:hidden space-y-3">
             {filteredInvoices.map((invoice) => (
-              <Card key={invoice.id} className="hover:shadow-md transition-shadow">
+              <Card
+                key={invoice.id}
+                className="hover:shadow-md transition-shadow"
+              >
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1 min-w-0">
@@ -858,7 +963,11 @@ export default function InvoicesPage() {
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 shrink-0"
+                        >
                           <MoreVertical className="h-4 w-4" />
                           <span className="sr-only">Open menu</span>
                         </Button>
@@ -889,6 +998,13 @@ export default function InvoicesPage() {
                             Mark as Paid
                           </DropdownMenuItem>
                         )}
+                        <DropdownMenuItem
+                          onClick={() => handleDuplicateAsDraft(invoice)}
+                          className="cursor-pointer"
+                        >
+                          <Copy className="mr-2 h-4 w-4" />
+                          Duplicate as Draft
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => openDeleteDialog(invoice)}
@@ -900,7 +1016,7 @@ export default function InvoicesPage() {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  
+
                   <div className="flex flex-wrap items-center gap-2 mb-2">
                     <span
                       className={`
@@ -922,7 +1038,7 @@ export default function InvoicesPage() {
                       <Badge variant="destructive">Past Due</Badge>
                     )}
                   </div>
-                  
+
                   <p className="text-sm text-muted-foreground">
                     Due: {new Date(invoice.dueDate).toLocaleDateString()}
                   </p>
@@ -984,7 +1100,11 @@ export default function InvoicesPage() {
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                            >
                               <MoreVertical className="h-4 w-4" />
                               <span className="sr-only">Open menu</span>
                             </Button>
@@ -1015,6 +1135,13 @@ export default function InvoicesPage() {
                                 Mark as Paid
                               </DropdownMenuItem>
                             )}
+                            <DropdownMenuItem
+                              onClick={() => handleDuplicateAsDraft(invoice)}
+                              className="cursor-pointer"
+                            >
+                              <Copy className="mr-2 h-4 w-4" />
+                              Duplicate as Draft
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => openDeleteDialog(invoice)}
@@ -1035,10 +1162,14 @@ export default function InvoicesPage() {
                             isExpanded={expandedInvoiceId === invoice.id}
                             onToggle={() => {
                               setExpandedInvoiceId(
-                                expandedInvoiceId === invoice.id ? null : invoice.id
+                                expandedInvoiceId === invoice.id
+                                  ? null
+                                  : invoice.id
                               );
                             }}
-                            client={clients.find((c) => c.id === invoice.clientId)}
+                            client={clients.find(
+                              (c) => c.id === invoice.clientId
+                            )}
                           />
                         </TableCell>
                       </TableRow>

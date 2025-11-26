@@ -159,6 +159,47 @@ export async function PUT(req, context) {
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB || "nudge");
 
+    // Check if invoice exists and get current status
+    const existingInvoice = await db.collection("invoices").findOne({
+      _id: new ObjectId(id),
+      userId,
+    });
+
+    if (!existingInvoice) {
+      return Response.json(
+        { ok: false, error: "Invoice not found" },
+        { status: 404 }
+      );
+    }
+
+    // Block updates to locked fields if invoice is already sent
+    if (existingInvoice.status === "sent") {
+      const lockedFields = [];
+      
+      if (clientId && clientId !== existingInvoice.clientId.toString()) {
+        lockedFields.push("client");
+      }
+      if (amount !== undefined && Math.round(parseFloat(amount) * 100) !== existingInvoice.amountCents) {
+        lockedFields.push("amount");
+      }
+      if (dueDate && dueDate.trim() !== existingInvoice.dueDate) {
+        lockedFields.push("dueDate");
+      }
+      if (paymentLink && paymentLink.trim() !== existingInvoice.paymentLink) {
+        lockedFields.push("paymentLink");
+      }
+
+      if (lockedFields.length > 0) {
+        return Response.json(
+          {
+            ok: false,
+            error: `Cannot update ${lockedFields.join(", ")} on a sent invoice. These fields are locked once an invoice is sent.`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // Build update document with required fields
     const updateDoc = {
       clientId: new ObjectId(clientId),
