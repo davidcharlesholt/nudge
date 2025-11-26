@@ -34,10 +34,8 @@ export default function OnboardingPage() {
   // Form data
   const [workspaceName, setWorkspaceName] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [businessEmail, setBusinessEmail] = useState("");
   const [defaultDueDateTerms, setDefaultDueDateTerms] = useState("net-30");
   const [defaultEmailTone, setDefaultEmailTone] = useState("friendly");
-  const [autoRemindersEnabled, setAutoRemindersEnabled] = useState(true);
 
   // Check if user already has a workspace
   useEffect(() => {
@@ -107,10 +105,8 @@ export default function OnboardingPage() {
         body: JSON.stringify({
           workspaceName,
           displayName,
-          businessEmail,
           defaultDueDateTerms,
           defaultEmailTone,
-          autoRemindersEnabled,
         }),
       });
 
@@ -234,25 +230,6 @@ export default function OnboardingPage() {
                   </p>
                 </div>
 
-                {/* Business Email */}
-                <div className="space-y-2">
-                  <Label htmlFor="businessEmail">
-                    Business Email (Optional)
-                  </Label>
-                  <Input
-                    id="businessEmail"
-                    type="email"
-                    value={businessEmail}
-                    onChange={(e) => setBusinessEmail(e.target.value)}
-                    placeholder="billing@yourstudio.com"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Use this if you want invoice emails to come from a different
-                    address than your login email. If you leave it blank,
-                    we&apos;ll use your sign-in email.
-                  </p>
-                </div>
-
                 {error && (
                   <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
                     {error}
@@ -342,28 +319,6 @@ export default function OnboardingPage() {
                     reminder templates. You can always adjust tone and copy on
                     individual invoices later.
                   </p>
-                </div>
-
-                {/* Auto-Reminders Toggle */}
-                <div className="flex items-start justify-between space-x-4 rounded-lg border p-4">
-                  <div className="flex-1 space-y-1">
-                    <Label
-                      htmlFor="autoReminders"
-                      className="text-base font-medium"
-                    >
-                      Send automatic payment reminders
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      If this is on, Nudge will automatically send reminders
-                      based on your reminder schedule. You can change this later
-                      in settings.
-                    </p>
-                  </div>
-                  <Switch
-                    id="autoReminders"
-                    checked={autoRemindersEnabled}
-                    onCheckedChange={setAutoRemindersEnabled}
-                  />
                 </div>
 
                 {error && (

@@ -58,10 +58,8 @@ export async function POST(req) {
     const {
       workspaceName,
       displayName,
-      businessEmail,
       defaultDueDateTerms,
       defaultEmailTone,
-      autoRemindersEnabled,
     } = body;
 
     // Validate required fields
@@ -80,10 +78,9 @@ export async function POST(req) {
       userId,
       workspaceName: workspaceName.trim(),
       displayName: displayName.trim(),
-      businessEmail: businessEmail?.trim() || "",
       defaultDueDateTerms: defaultDueDateTerms || "net-30",
-      defaultEmailTone: defaultEmailTone || "professional",
-      autoRemindersEnabled: autoRemindersEnabled ?? true,
+      defaultEmailTone: defaultEmailTone || "friendly",
+      autoRemindersEnabled: true, // Always enabled by default
       createdAt: now,
       updatedAt: now,
     };
