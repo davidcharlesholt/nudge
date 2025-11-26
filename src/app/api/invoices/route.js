@@ -1,6 +1,6 @@
 import clientPromise from "@/lib/db";
 import { ObjectId } from "mongodb";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { sendInvoiceEmail } from "@/lib/email";
 
 export async function GET(req) {
@@ -245,6 +245,18 @@ export async function POST(req) {
         const fromName = companyName || displayName || "Nudge";
         const yourName = displayName || companyName || "Nudge";
 
+        // Get user's email from Clerk for reply-to
+        let userEmail = null;
+        try {
+          const user = await currentUser();
+          userEmail = user?.emailAddresses?.find(
+            (email) => email.id === user.primaryEmailAddressId
+          )?.emailAddress;
+          console.log("INVOICE EMAIL → userEmail from currentUser:", userEmail);
+        } catch (clerkError) {
+          console.warn("Could not fetch user email via currentUser:", clerkError);
+        }
+
         // Get initial template
         const initialTemplate = templates.find((t) => t.id === "initial");
         if (initialTemplate) {
@@ -262,6 +274,7 @@ export async function POST(req) {
             paymentLink: doc.paymentLink,
             yourName,
             fromName,
+            replyTo: userEmail,
           });
         }
       } catch (emailError) {

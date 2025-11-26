@@ -16,7 +16,7 @@ export async function sendTestEmail(to, fromName) {
   const fallbackFromName = process.env.RESEND_FROM_NAME || "Nudge";
   const finalFromName = fromName || fallbackFromName;
   const from = `${finalFromName} <${process.env.RESEND_FROM_EMAIL}>`;
-  
+
   const res = await resend.emails.send({
     from,
     to,
@@ -46,6 +46,7 @@ export async function sendTestEmail(to, fromName) {
  * @param {string} params.paymentLink - Payment URL
  * @param {string} params.yourName - Sender's name (for email sign-off)
  * @param {string} params.fromName - Sender's display name (for email From header)
+ * @param {string} params.replyTo - Email address for replies (optional)
  */
 export async function sendInvoiceEmail({
   to,
@@ -58,6 +59,7 @@ export async function sendInvoiceEmail({
   paymentLink,
   yourName,
   fromName,
+  replyTo,
 }) {
   // Format amount as dollars
   const amount = `$${(amountCents / 100).toFixed(2)}`;
@@ -105,10 +107,23 @@ export async function sendInvoiceEmail({
     html: `<div style="font-family: sans-serif; line-height: 1.6; color: #333;">${htmlBody}</div>`,
   };
 
+  // Add reply-to if provided (so clients can reply directly to the user)
+  if (replyTo && replyTo.trim()) {
+    const replyToEmail = replyTo.trim();
+    emailData.reply_to = replyToEmail;
+    emailData.replyTo = replyToEmail;
+    emailData.headers = {
+      ...(emailData.headers || {}),
+      "Reply-To": replyToEmail,
+    };
+  }
   // Add CC emails if provided
   if (ccEmails && ccEmails.length > 0) {
     emailData.cc = ccEmails.filter((email) => email && email.trim());
   }
+
+  // Send email and check for errors
+  console.log("sendInvoiceEmail emailData:", emailData);
 
   // Send email and check for errors
   const res = await resend.emails.send(emailData);

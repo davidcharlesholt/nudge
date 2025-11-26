@@ -1,6 +1,6 @@
 import clientPromise from "@/lib/db";
 import { ObjectId } from "mongodb";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { sendInvoiceEmail } from "@/lib/email";
 import { initializeTemplatesForSchedule } from "@/lib/invoice-templates";
 
@@ -8,7 +8,7 @@ export async function POST(_req, context) {
   try {
     // Get the current user's ID from Clerk
     const { userId } = await auth();
-    
+
     // Return 401 if no user is authenticated
     if (!userId) {
       return Response.json(
@@ -56,7 +56,11 @@ export async function POST(_req, context) {
     // Validate invoice has all required fields to be sent
     if (!invoice.amountCents || !invoice.dueDate || !invoice.paymentLink) {
       return Response.json(
-        { ok: false, error: "Invoice is missing required fields (amount, dueDate, or paymentLink). Please edit the invoice first." },
+        {
+          ok: false,
+          error:
+            "Invoice is missing required fields (amount, dueDate, or paymentLink). Please edit the invoice first.",
+        },
         { status: 400 }
       );
     }
@@ -81,21 +85,33 @@ export async function POST(_req, context) {
     const fromName = companyName || displayName || "Nudge";
     const yourName = displayName || companyName || "Nudge";
 
+    // Get user's email from Clerk for reply-to
+    let userEmail = null;
+    try {
+      const user = await currentUser();
+      userEmail = user?.emailAddresses?.find(
+        (email) => email.id === user.primaryEmailAddressId
+      )?.emailAddress;
+      console.log("INVOICE EMAIL → userEmail from currentUser:", userEmail);
+    } catch (clerkError) {
+      console.warn("Could not fetch user email via currentUser:", clerkError);
+    }
+
     // Get initial template - create default templates if missing
     let templates = invoice.templates || [];
     let initialTemplate = templates.find((t) => t.id === "initial");
-    
+
     if (!initialTemplate) {
       // Auto-create default templates if missing
       console.log(`Invoice ${id} missing templates, creating defaults...`);
-      
+
       const defaultTone = workspace?.defaultEmailTone || "friendly";
       const defaultSchedule = invoice.reminderSchedule || "standard";
-      
+
       // Initialize default templates
       templates = initializeTemplatesForSchedule(defaultSchedule, defaultTone);
       initialTemplate = templates.find((t) => t.id === "initial");
-      
+
       // Save templates to the invoice for future use
       await db.collection("invoices").updateOne(
         { _id: new ObjectId(id), userId },
@@ -108,10 +124,12 @@ export async function POST(_req, context) {
           },
         }
       );
-      
-      console.log(`Created ${templates.length} default templates for invoice ${id}`);
+
+      console.log(
+        `Created ${templates.length} default templates for invoice ${id}`
+      );
     }
-    
+
     if (!initialTemplate) {
       // This should never happen, but log details if it does
       console.error(`Failed to create initial template for invoice ${id}`, {
@@ -120,11 +138,12 @@ export async function POST(_req, context) {
         templateCount: templates.length,
         reminderSchedule: invoice.reminderSchedule,
       });
-      
+
       return Response.json(
-        { 
-          ok: false, 
-          error: "Unable to create invoice email template. Please try editing the invoice and saving it, then try sending again." 
+        {
+          ok: false,
+          error:
+            "Unable to create invoice email template. Please try editing the invoice and saving it, then try sending again.",
         },
         { status: 500 }
       );
@@ -146,6 +165,7 @@ export async function POST(_req, context) {
         paymentLink: invoice.paymentLink,
         yourName,
         fromName,
+        replyTo: userEmail, // Clients can reply directly to the user
       });
     } catch (emailError) {
       console.error(
@@ -215,4 +235,3 @@ export async function POST(_req, context) {
     return Response.json({ ok: false, error: error.message }, { status: 500 });
   }
 }
-

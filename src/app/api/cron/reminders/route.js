@@ -3,6 +3,7 @@
 // Usage: GET /api/cron/reminders?secret=YOUR_CRON_SECRET
 
 import clientPromise from "@/lib/db";
+import { clerkClient, currentUser } from "@clerk/nextjs/server";
 import { sendInvoiceEmail } from "@/lib/email";
 
 /**
@@ -177,6 +178,19 @@ export async function GET(req) {
             const fromName = companyName || displayName || "Nudge";
             const yourName = displayName || companyName || "Nudge";
 
+            // Get user's email from Clerk for reply-to
+            // NOTE: Cron has no user context, so we must use clerkClient.users.getUser()
+            let userEmail = null;
+            try {
+              const user = await clerkClient.users.getUser(invoice.userId);
+              userEmail = user?.emailAddresses?.find(
+                (email) => email.id === user.primaryEmailAddressId
+              )?.emailAddress;
+              console.log("INVOICE EMAIL → userEmail from clerkClient:", userEmail);
+            } catch (clerkError) {
+              console.warn("Could not fetch user email via clerkClient:", clerkError);
+            }
+
             // Send the email
             await sendInvoiceEmail({
               to: clientDoc.email,
@@ -192,6 +206,7 @@ export async function GET(req) {
               paymentLink: invoice.paymentLink,
               yourName,
               fromName,
+              replyTo: userEmail,
             });
 
             // Update invoice with sent reminder

@@ -1,6 +1,6 @@
 import clientPromise from "@/lib/db";
 import { ObjectId } from "mongodb";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { sendInvoiceEmail } from "@/lib/email";
 import { REMINDER_SCHEDULES } from "@/lib/invoice-templates";
 
@@ -138,6 +138,18 @@ export async function POST(_req, context) {
     const fromName = companyName || displayName || "Nudge";
     const yourName = displayName || companyName || "Nudge";
 
+    // Get user's email from Clerk for reply-to
+    let userEmail = null;
+    try {
+      const user = await currentUser();
+      userEmail = user?.emailAddresses?.find(
+        (email) => email.id === user.primaryEmailAddressId
+      )?.emailAddress;
+      console.log("INVOICE EMAIL → userEmail from currentUser:", userEmail);
+    } catch (clerkError) {
+      console.warn("Could not fetch user email via currentUser:", clerkError);
+    }
+
     // Send the reminder email
     try {
       await sendInvoiceEmail({
@@ -154,6 +166,7 @@ export async function POST(_req, context) {
         paymentLink: invoice.paymentLink,
         yourName,
         fromName,
+        replyTo: userEmail,
       });
     } catch (emailError) {
       console.error("Error sending reminder email:", emailError);
