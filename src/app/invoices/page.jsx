@@ -730,23 +730,25 @@ export default function InvoicesPage() {
   return (
     <div>
       {/* Page Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">
-            All Invoices
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage invoices and track payments
-          </p>
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">
+              All Invoices
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage invoices and track payments
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           {/* Status Filter Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                className={`
-                  ${
+                className={`w-full sm:w-auto min-h-[44px] ${
                     selectedStatuses.length < statusConfig.length
                       ? "border-blue-500"
                       : ""
@@ -781,7 +783,7 @@ export default function InvoicesPage() {
           <Button
             asChild
             variant="accent"
-            className="shadow-md"
+            className="shadow-md w-full sm:w-auto min-h-[44px]"
           >
             <Link href="/invoices/new">Create Invoice</Link>
           </Button>
@@ -831,124 +833,216 @@ export default function InvoicesPage() {
         </Card>
       )}
 
-      {/* Invoices Table */}
+      {/* Invoices List */}
       {!loading && !error && filteredInvoices.length > 0 && (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Client</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead className="w-[70px]">
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredInvoices.map((invoice) => (
-                <React.Fragment key={invoice.id}>
-                  <TableRow>
-                    <TableCell className="font-medium">
-                      {getClientName(invoice.clientId)}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {formatAmount(invoice.amountCents)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`
-                            inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium
-                            ${
-                              invoice.status === "paid"
-                                ? "bg-green-100 text-green-800"
-                                : invoice.status === "overdue"
-                                ? "bg-red-100 text-red-800"
-                                : invoice.status === "sent"
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-gray-100 text-gray-800"
-                            }
-                          `}
+        <>
+          {/* Mobile Card Layout */}
+          <div className="md:hidden space-y-3">
+            {filteredInvoices.map((invoice) => (
+              <Card key={invoice.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm mb-1 truncate">
+                        {getClientName(invoice.clientId)}
+                      </p>
+                      <p className="text-lg font-bold text-foreground">
+                        {formatAmount(invoice.amountCents)}
+                      </p>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
+                          <MoreVertical className="h-4 w-4" />
+                          <span className="sr-only">Open menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => handleEdit(invoice.id)}
+                          className="cursor-pointer"
                         >
-                          {invoice.status}
-                        </span>
-                        {isPastDue(invoice) && (
-                          <Badge variant="destructive">Past Due</Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(invoice.dueDate).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                            <span className="sr-only">Open menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit invoice
+                        </DropdownMenuItem>
+                        {canResendInvoice(invoice) && (
                           <DropdownMenuItem
-                            onClick={() => handleEdit(invoice.id)}
+                            onClick={() => openResendDialog(invoice)}
                             className="cursor-pointer"
                           >
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Edit invoice
+                            <Send className="mr-2 h-4 w-4" />
+                            Resend invoice
                           </DropdownMenuItem>
-                          {canResendInvoice(invoice) && (
-                            <DropdownMenuItem
-                              onClick={() => openResendDialog(invoice)}
-                              className="cursor-pointer"
-                            >
-                              <Send className="mr-2 h-4 w-4" />
-                              Resend invoice
-                            </DropdownMenuItem>
-                          )}
-                          {invoice.status !== "paid" && (
-                            <DropdownMenuItem
-                              onClick={() => handleMarkAsPaid(invoice)}
-                              className="cursor-pointer"
-                            >
-                              <CheckCircle2 className="mr-2 h-4 w-4" />
-                              Mark as Paid
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuSeparator />
+                        )}
+                        {invoice.status !== "paid" && (
                           <DropdownMenuItem
-                            onClick={() => openDeleteDialog(invoice)}
-                            className="cursor-pointer text-destructive focus:text-destructive"
+                            onClick={() => handleMarkAsPaid(invoice)}
+                            className="cursor-pointer"
                           >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete invoice
+                            <CheckCircle2 className="mr-2 h-4 w-4" />
+                            Mark as Paid
                           </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                  {invoice.reminderSchedule && (
-                    <TableRow className="border-none">
-                      <TableCell colSpan={5} className="py-2 bg-muted/30">
-                        <ReminderTimeline
-                          invoice={invoice}
-                          isExpanded={expandedInvoiceId === invoice.id}
-                          onToggle={() => {
-                            setExpandedInvoiceId(
-                              expandedInvoiceId === invoice.id ? null : invoice.id
-                            );
-                          }}
-                          client={clients.find((c) => c.id === invoice.clientId)}
-                        />
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => openDeleteDialog(invoice)}
+                          className="cursor-pointer text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete invoice
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <span
+                      className={`
+                        inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium
+                        ${
+                          invoice.status === "paid"
+                            ? "bg-green-100 text-green-800"
+                            : invoice.status === "overdue"
+                            ? "bg-red-100 text-red-800"
+                            : invoice.status === "sent"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-gray-100 text-gray-800"
+                        }
+                      `}
+                    >
+                      {invoice.status}
+                    </span>
+                    {isPastDue(invoice) && (
+                      <Badge variant="destructive">Past Due</Badge>
+                    )}
+                  </div>
+                  
+                  <p className="text-sm text-muted-foreground">
+                    Due: {new Date(invoice.dueDate).toLocaleDateString()}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Desktop Table Layout */}
+          <Card className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead className="w-[70px]">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredInvoices.map((invoice) => (
+                  <React.Fragment key={invoice.id}>
+                    <TableRow>
+                      <TableCell className="font-medium">
+                        {getClientName(invoice.clientId)}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {formatAmount(invoice.amountCents)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`
+                              inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium
+                              ${
+                                invoice.status === "paid"
+                                  ? "bg-green-100 text-green-800"
+                                  : invoice.status === "overdue"
+                                  ? "bg-red-100 text-red-800"
+                                  : invoice.status === "sent"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }
+                            `}
+                          >
+                            {invoice.status}
+                          </span>
+                          {isPastDue(invoice) && (
+                            <Badge variant="destructive">Past Due</Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(invoice.dueDate).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
+                              <span className="sr-only">Open menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => handleEdit(invoice.id)}
+                              className="cursor-pointer"
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit invoice
+                            </DropdownMenuItem>
+                            {canResendInvoice(invoice) && (
+                              <DropdownMenuItem
+                                onClick={() => openResendDialog(invoice)}
+                                className="cursor-pointer"
+                              >
+                                <Send className="mr-2 h-4 w-4" />
+                                Resend invoice
+                              </DropdownMenuItem>
+                            )}
+                            {invoice.status !== "paid" && (
+                              <DropdownMenuItem
+                                onClick={() => handleMarkAsPaid(invoice)}
+                                className="cursor-pointer"
+                              >
+                                <CheckCircle2 className="mr-2 h-4 w-4" />
+                                Mark as Paid
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => openDeleteDialog(invoice)}
+                              className="cursor-pointer text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete invoice
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  )}
-                </React.Fragment>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
+                    {invoice.reminderSchedule && (
+                      <TableRow className="border-none">
+                        <TableCell colSpan={5} className="py-2 bg-muted/30">
+                          <ReminderTimeline
+                            invoice={invoice}
+                            isExpanded={expandedInvoiceId === invoice.id}
+                            onToggle={() => {
+                              setExpandedInvoiceId(
+                                expandedInvoiceId === invoice.id ? null : invoice.id
+                              );
+                            }}
+                            client={clients.find((c) => c.id === invoice.clientId)}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        </>
       )}
 
       {/* Delete Confirmation Dialog */}

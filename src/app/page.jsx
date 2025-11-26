@@ -121,7 +121,7 @@ export default function DashboardPage() {
           <DropdownMenuTrigger asChild>
             <Button 
               variant="accent"
-              className="shadow-md"
+              className="shadow-md w-full sm:w-auto min-h-[44px]"
             >
               <Plus className="mr-2 h-4 w-4" />
               New
@@ -205,7 +205,7 @@ export default function DashboardPage() {
 
           {/* Recent Invoices Section */}
           <div className="mt-8">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
               <h2 className="text-lg font-semibold text-foreground">
                 Recent Invoices
               </h2>
@@ -222,7 +222,7 @@ export default function DashboardPage() {
                   id="dateFilter"
                   value={dateFilter}
                   onChange={(e) => setDateFilter(Number(e.target.value))}
-                  className="px-3 py-2 border border-input rounded-md text-sm bg-background cursor-pointer hover:bg-muted transition-colors"
+                  className="px-3 py-2 border border-input rounded-md text-sm bg-background cursor-pointer hover:bg-muted transition-colors min-h-[44px]"
                 >
                   <option value={30}>Last 30 days</option>
                   <option value={60}>Last 60 days</option>
@@ -240,69 +240,111 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             ) : (
-              <Card>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left p-3 text-sm font-semibold text-muted-foreground">
-                          Client
-                        </th>
-                        <th className="text-left p-3 text-sm font-semibold text-muted-foreground">
-                          Amount
-                        </th>
-                        <th className="text-left p-3 text-sm font-semibold text-muted-foreground">
-                          Status
-                        </th>
-                        <th className="text-left p-3 text-sm font-semibold text-muted-foreground">
-                          Due Date
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentInvoices.map((invoice) => (
-                        <tr
-                          key={invoice.id}
-                          className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors"
-                        >
-                          <td className="p-3 text-sm">
-                            {getClientName(invoice.clientId)}
-                          </td>
-                          <td className="p-3 text-sm font-medium">
-                            {formatAmount(invoice.amountCents)}
-                          </td>
-                          <td className="p-3">
-                            <span
-                              className={`
-                                inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium
-                                ${
-                                  invoice.status === "paid"
-                                    ? "bg-green-100 text-green-800"
-                                    : invoice.status === "overdue"
-                                    ? "bg-red-100 text-red-800"
-                                    : invoice.status === "sent"
-                                    ? "bg-blue-100 text-blue-800"
-                                    : "bg-gray-100 text-gray-800"
-                                }
-                              `}
-                            >
-                              {invoice.status}
-                            </span>
-                          </td>
-                          <td className="p-3 text-sm text-muted-foreground">
-                            {new Date(invoice.dueDate).toLocaleDateString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              <>
+                {/* Mobile Card Layout */}
+                <div className="md:hidden space-y-3">
+                  {recentInvoices.map((invoice) => (
+                    <Card key={invoice.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm mb-1">
+                              {getClientName(invoice.clientId)}
+                            </p>
+                            <p className="text-lg font-bold text-foreground">
+                              {formatAmount(invoice.amountCents)}
+                            </p>
+                          </div>
+                          <span
+                            className={`
+                              inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium
+                              ${
+                                invoice.status === "paid"
+                                  ? "bg-green-100 text-green-800"
+                                  : invoice.status === "overdue"
+                                  ? "bg-red-100 text-red-800"
+                                  : invoice.status === "sent"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }
+                            `}
+                          >
+                            {invoice.status}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Due: {new Date(invoice.dueDate).toLocaleDateString()}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-              </Card>
+
+                {/* Desktop Table Layout */}
+                <Card className="hidden md:block">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left p-3 text-sm font-semibold text-muted-foreground">
+                            Client
+                          </th>
+                          <th className="text-left p-3 text-sm font-semibold text-muted-foreground">
+                            Amount
+                          </th>
+                          <th className="text-left p-3 text-sm font-semibold text-muted-foreground">
+                            Status
+                          </th>
+                          <th className="text-left p-3 text-sm font-semibold text-muted-foreground">
+                            Due Date
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentInvoices.map((invoice) => (
+                          <tr
+                            key={invoice.id}
+                            className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors"
+                          >
+                            <td className="p-3 text-sm">
+                              {getClientName(invoice.clientId)}
+                            </td>
+                            <td className="p-3 text-sm font-medium">
+                              {formatAmount(invoice.amountCents)}
+                            </td>
+                            <td className="p-3">
+                              <span
+                                className={`
+                                  inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium
+                                  ${
+                                    invoice.status === "paid"
+                                      ? "bg-green-100 text-green-800"
+                                      : invoice.status === "overdue"
+                                      ? "bg-red-100 text-red-800"
+                                      : invoice.status === "sent"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : "bg-gray-100 text-gray-800"
+                                  }
+                                `}
+                              >
+                                {invoice.status}
+                              </span>
+                            </td>
+                            <td className="p-3 text-sm text-muted-foreground">
+                              {new Date(invoice.dueDate).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              </>
             )}
 
           {/* View All Invoices Button */}
           <div className="flex justify-end mt-4">
-            <Button asChild>
+            <Button asChild className="w-full sm:w-auto min-h-[44px]">
               <Link href="/invoices">View All Invoices</Link>
             </Button>
           </div>
