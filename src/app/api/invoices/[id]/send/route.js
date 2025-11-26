@@ -2,6 +2,7 @@ import clientPromise from "@/lib/db";
 import { ObjectId } from "mongodb";
 import { auth } from "@clerk/nextjs/server";
 import { sendInvoiceEmail } from "@/lib/email";
+import { initializeTemplatesForSchedule } from "@/lib/invoice-templates";
 
 export async function POST(_req, context) {
   try {
@@ -73,21 +74,59 @@ export async function POST(_req, context) {
       );
     }
 
-    // Fetch workspace for sender names
+    // Fetch workspace for sender names and default settings
     const workspace = await db.collection("workspaces").findOne({ userId });
     const companyName = workspace?.workspaceName || workspace?.companyName;
     const displayName = workspace?.displayName;
     const fromName = companyName || displayName || "Nudge";
     const yourName = displayName || companyName || "Nudge";
 
-    // Get initial template
-    const templates = invoice.templates || [];
-    const initialTemplate = templates.find((t) => t.id === "initial");
+    // Get initial template - create default templates if missing
+    let templates = invoice.templates || [];
+    let initialTemplate = templates.find((t) => t.id === "initial");
     
     if (!initialTemplate) {
+      // Auto-create default templates if missing
+      console.log(`Invoice ${id} missing templates, creating defaults...`);
+      
+      const defaultTone = workspace?.defaultEmailTone || "friendly";
+      const defaultSchedule = invoice.reminderSchedule || "standard";
+      
+      // Initialize default templates
+      templates = initializeTemplatesForSchedule(defaultSchedule, defaultTone);
+      initialTemplate = templates.find((t) => t.id === "initial");
+      
+      // Save templates to the invoice for future use
+      await db.collection("invoices").updateOne(
+        { _id: new ObjectId(id), userId },
+        {
+          $set: {
+            templates,
+            reminderSchedule: defaultSchedule,
+            emailFlow: "custom",
+            updatedAt: new Date(),
+          },
+        }
+      );
+      
+      console.log(`Created ${templates.length} default templates for invoice ${id}`);
+    }
+    
+    if (!initialTemplate) {
+      // This should never happen, but log details if it does
+      console.error(`Failed to create initial template for invoice ${id}`, {
+        invoiceId: id,
+        userId,
+        templateCount: templates.length,
+        reminderSchedule: invoice.reminderSchedule,
+      });
+      
       return Response.json(
-        { ok: false, error: "Invoice template not found" },
-        { status: 400 }
+        { 
+          ok: false, 
+          error: "Unable to create invoice email template. Please try editing the invoice and saving it, then try sending again." 
+        },
+        { status: 500 }
       );
     }
 
