@@ -744,16 +744,16 @@ export default function InvoicesPage() {
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             {/* Status Filter Dropdown */}
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={`w-full sm:w-auto min-h-[44px] ${
-                      selectedStatuses.length < statusConfig.length
-                        ? "border-blue-500"
-                        : ""
-                    }
-                  `}
-                >
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className={`w-full sm:w-auto min-h-[44px] hover:!bg-white hover:!text-foreground ${
+                    selectedStatuses.length < statusConfig.length
+                      ? "border-blue-500"
+                      : ""
+                  }
+                `}
+              >
                   Status
                   <span className="ml-1.5 text-xs text-muted-foreground">
                     {selectedStatuses.length}/{statusConfig.length}
