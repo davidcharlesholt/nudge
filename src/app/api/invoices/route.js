@@ -91,6 +91,7 @@ export async function POST(req) {
       emailFlow,
       reminderSchedule,
       templates,
+      emailTone,
     } = body;
 
     // Validate status enum first
@@ -207,12 +208,14 @@ export async function POST(req) {
       doc.emailFlow = emailFlow || "custom";
       doc.reminderSchedule = reminderSchedule || "standard";
       doc.templates = templates || [];
+      doc.emailTone = emailTone || "friendly";
       doc.remindersSent = Array.isArray(body.remindersSent) ? body.remindersSent : [];
     } else {
       // For drafts, store these if provided but don't require them
       if (emailFlow) doc.emailFlow = emailFlow;
       if (reminderSchedule) doc.reminderSchedule = reminderSchedule;
       if (templates) doc.templates = templates;
+      if (emailTone) doc.emailTone = emailTone;
       if (body.remindersSent) {
         doc.remindersSent = Array.isArray(body.remindersSent) ? body.remindersSent : [];
       }

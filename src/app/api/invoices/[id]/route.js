@@ -95,6 +95,7 @@ export async function PUT(req, context) {
       emailFlow,
       reminderSchedule,
       templates,
+      emailTone,
     } = body;
 
     // Validate status enum first
@@ -231,6 +232,7 @@ export async function PUT(req, context) {
     if (emailFlow) updateDoc.emailFlow = emailFlow;
     if (reminderSchedule) updateDoc.reminderSchedule = reminderSchedule;
     if (templates) updateDoc.templates = templates;
+    if (emailTone) updateDoc.emailTone = emailTone;
 
     const result = await db.collection("invoices").updateOne(
       { _id: new ObjectId(id), userId },

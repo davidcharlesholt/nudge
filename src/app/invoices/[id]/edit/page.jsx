@@ -174,17 +174,21 @@ export default function EditInvoicePage() {
       // Pre-fill email configuration
       setCurrentFlow(invoice.emailFlow || "custom");
       setReminderSchedule(invoice.reminderSchedule || "standard");
+      
+      // Load saved tone or use workspace default or fallback to "friendly"
+      const savedTone = invoice.emailTone || workspaceData.workspace?.defaultEmailTone || "friendly";
+      setEditorTone(savedTone);
 
       if (invoice.templates && Array.isArray(invoice.templates)) {
-        // Normalize templates to ensure they have canonical fields
-        const normalizedTemplates = normalizeTemplates(invoice.templates, "friendly");
+        // Normalize templates to ensure they have canonical fields, using saved tone
+        const normalizedTemplates = normalizeTemplates(invoice.templates, savedTone);
         setTemplates(normalizedTemplates);
         setSavedTemplates(normalizedTemplates);
       } else {
         // Fallback for old invoices
         const defaultTemplates = initializeTemplatesForSchedule(
           invoice.reminderSchedule || "standard",
-          "friendly"
+          savedTone
         );
         setTemplates(defaultTemplates);
         setSavedTemplates(defaultTemplates);
@@ -543,6 +547,9 @@ export default function EditInvoicePage() {
       if (emailFlow) payload.emailFlow = emailFlow;
       if (reminderSchedule) payload.reminderSchedule = reminderSchedule;
       if (savedTemplates) payload.templates = savedTemplates;
+      
+      // Save the current editor tone
+      payload.emailTone = editorTone;
 
       const res = await fetch(`/api/invoices/${invoiceId}`, {
         method: "PUT",

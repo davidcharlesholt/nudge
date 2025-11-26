@@ -465,6 +465,8 @@ export default function NewInvoicePage() {
         if (paymentLink) payload.paymentLink = paymentLink;
         if (dueDate) payload.dueDate = dueDate;
         if (ccEmails && ccEmails.length > 0) payload.ccEmails = ccEmails;
+        // Save tone even for drafts
+        payload.emailTone = editorTone;
         // Don't include templates/schedule for drafts
       } else {
         // For sent invoices, include all required fields
@@ -476,6 +478,7 @@ export default function NewInvoicePage() {
         payload.emailFlow = currentFlow;
         payload.reminderSchedule = reminderSchedule;
         payload.templates = savedTemplates;
+        payload.emailTone = editorTone;
       }
 
       const res = await fetch("/api/invoices", {
