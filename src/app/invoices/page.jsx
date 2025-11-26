@@ -5,13 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { requireWorkspace } from "@/lib/workspace";
 import { REMINDER_SCHEDULES } from "@/lib/invoice-templates";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -382,10 +376,8 @@ export default function InvoicesPage() {
       return {
         templateId: template.id,
         label: template.label || template.id,
-        subject:
-          template.subject ||
-          template.toneVariants?.friendly?.subject ||
-          "No subject",
+        // For resends, always use the friendly reminder subject
+        subject: "Friendly reminder about your invoice",
         body: template.body || template.toneVariants?.friendly?.body || "",
         wasSent: sendStatus.wasSent,
         sentAt: sendStatus.sentAt,

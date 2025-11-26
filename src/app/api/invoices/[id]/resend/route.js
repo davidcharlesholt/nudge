@@ -67,12 +67,13 @@ export async function POST(_req, context) {
     }
 
     // Get the email subject and body with fallback logic
-    // Primary: use canonical fields (always present after normalization)
-    // Fallback: use tone variant if canonical fields are missing
+    // For resends, always use the friendly reminder subject (not the template's original subject)
+    const finalSubject = "Friendly reminder about your invoice";
+
+    // For body, use template's content with fallbacks
     const variant = template.toneVariants
       ? getToneVariant(template, "friendly")
       : null;
-    const finalSubject = template.subject || variant?.subject || "";
     const finalBody = template.body || variant?.body || "";
 
     // Fetch client data
