@@ -91,7 +91,7 @@ export default function Header() {
             {isSignedIn ? (
               <>
                 {workspaceName && (
-                  <span className="hidden lg:inline text-sm font-medium text-foreground max-w-[120px] truncate">
+                  <span className="hidden lg:inline text-sm font-medium text-foreground">
                     {workspaceName}
                   </span>
                 )}
