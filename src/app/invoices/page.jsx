@@ -731,7 +731,7 @@ export default function InvoicesPage() {
     <div>
       {/* Page Header */}
       <div className="mb-6">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-foreground">
               All Invoices
@@ -740,53 +740,53 @@ export default function InvoicesPage() {
               Manage invoices and track payments
             </p>
           </div>
-        </div>
-        
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          {/* Status Filter Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className={`w-full sm:w-auto min-h-[44px] ${
-                    selectedStatuses.length < statusConfig.length
-                      ? "border-blue-500"
-                      : ""
-                  }
-                `}
-              >
-                Status
-                <span className="ml-1.5 text-xs text-muted-foreground">
-                  {selectedStatuses.length}/{statusConfig.length}
-                </span>
-                <ChevronDown className="ml-1 h-4 w-4 opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[180px]">
-              {statusConfig.map((status) => (
-                <DropdownMenuCheckboxItem
-                  key={status.value}
-                  checked={selectedStatuses.includes(status.value)}
-                  onCheckedChange={() => toggleStatus(status.value)}
+          
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            {/* Status Filter Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={`w-full sm:w-auto min-h-[44px] ${
+                      selectedStatuses.length < statusConfig.length
+                        ? "border-blue-500"
+                        : ""
+                    }
+                  `}
                 >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-2 h-2 rounded-full ${status.dotColor}`}
-                    />
-                    <span>{status.label}</span>
-                  </div>
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  Status
+                  <span className="ml-1.5 text-xs text-muted-foreground">
+                    {selectedStatuses.length}/{statusConfig.length}
+                  </span>
+                  <ChevronDown className="ml-1 h-4 w-4 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[180px]">
+                {statusConfig.map((status) => (
+                  <DropdownMenuCheckboxItem
+                    key={status.value}
+                    checked={selectedStatuses.includes(status.value)}
+                    onCheckedChange={() => toggleStatus(status.value)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`w-2 h-2 rounded-full ${status.dotColor}`}
+                      />
+                      <span>{status.label}</span>
+                    </div>
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          <Button
-            asChild
-            variant="accent"
-            className="shadow-md w-full sm:w-auto min-h-[44px]"
-          >
-            <Link href="/invoices/new">Create Invoice</Link>
-          </Button>
+            <Button
+              asChild
+              variant="accent"
+              className="shadow-md w-full sm:w-auto min-h-[44px]"
+            >
+              <Link href="/invoices/new">Create Invoice</Link>
+            </Button>
+          </div>
         </div>
       </div>
 

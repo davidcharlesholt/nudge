@@ -183,22 +183,25 @@ export default function ClientsPage() {
         </div>
       )}
       {/* Page Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">
-            All Clients
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage your client contacts
-          </p>
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">
+              All Clients
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage your client contacts
+            </p>
+          </div>
+          
+          <Button
+            asChild
+            variant="accent"
+            className="shadow-md w-full sm:w-auto min-h-[44px]"
+          >
+            <Link href="/clients/new">Add New Client</Link>
+          </Button>
         </div>
-        <Button
-          asChild
-          variant="accent"
-          className="shadow-md"
-        >
-          <Link href="/clients/new">Add New Client</Link>
-        </Button>
       </div>
 
       {/* Loading state */}
@@ -222,7 +225,7 @@ export default function ClientsPage() {
             <p className="text-muted-foreground text-center mb-4">
               No clients yet. Add your first client to get started!
             </p>
-            <Button asChild>
+            <Button asChild variant="accent" className="shadow-md">
               <Link href="/clients/new">Add Your First Client</Link>
             </Button>
           </div>
