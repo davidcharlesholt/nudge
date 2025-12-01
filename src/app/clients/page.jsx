@@ -123,7 +123,7 @@ export default function ClientsPage() {
 
       toast({
         title: "Client deleted",
-        description: `${clientToDelete.name} has been removed.`,
+        description: "This client has been removed.",
       });
 
       setDeleteDialogOpen(false);
@@ -302,8 +302,8 @@ export default function ClientsPage() {
             <AlertDialogTitle>Delete Client?</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete{" "}
-              <strong>{clientToDelete?.name}</strong>? This action cannot be
-              undone and will remove all associated data.
+              <strong>{clientToDelete?.fullName || "this client"}</strong>? This
+              action cannot be undone and will remove all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
