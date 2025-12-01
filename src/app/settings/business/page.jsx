@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { getWorkspace } from "@/lib/workspace";
 import { useToast } from "@/components/ui/use-toast";
+import { getErrorToastDetails } from "@/lib/utils";
 
 export default function BusinessSettingsPage() {
   const router = useRouter();
@@ -94,12 +95,12 @@ export default function BusinessSettingsPage() {
       router.refresh();
     } catch (err) {
       console.error("Error updating workspace:", err);
-      const errorMessage = err instanceof Error ? err.message : "An error occurred";
-      setError(errorMessage);
+      const errorDetails = getErrorToastDetails(err, "Failed to save");
+      setError(errorDetails.description);
       toast({
         variant: "destructive",
-        title: "Failed to save",
-        description: errorMessage,
+        title: errorDetails.title,
+        description: errorDetails.description,
       });
     } finally {
       setSubmitting(false);

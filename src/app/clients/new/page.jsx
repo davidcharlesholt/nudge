@@ -8,16 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Plus, X } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { getErrorToastDetails } from "@/lib/utils";
 
 export default function NewClientPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [additionalEmails, setAdditionalEmails] = useState([]);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
 
   function addAdditionalEmail() {
     setAdditionalEmails([...additionalEmails, ""]);
@@ -35,7 +37,6 @@ export default function NewClientPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setError(null);
     setSubmitting(true);
 
     try {
@@ -57,7 +58,12 @@ export default function NewClientPage() {
       router.push(`/clients?created=true&clientId=${newClientId}`);
     } catch (err) {
       console.error("Error creating client:", err);
-      setError(err.message);
+      const errorDetails = getErrorToastDetails(err, "Failed to create client");
+      toast({
+        variant: "destructive",
+        title: errorDetails.title,
+        description: errorDetails.description,
+      });
       setSubmitting(false);
     }
   }
@@ -166,13 +172,6 @@ export default function NewClientPage() {
                 placeholder="Acme Inc. (optional)"
               />
             </div>
-
-            {/* Error Message */}
-            {error && (
-              <div className="bg-destructive/10 text-destructive border border-destructive/20 rounded-lg p-3 text-sm">
-                {error}
-              </div>
-            )}
 
             {/* Action Buttons */}
             <div className="flex gap-3 pt-2">

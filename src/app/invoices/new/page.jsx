@@ -52,6 +52,7 @@ import {
   rewriteWithAI,
 } from "@/lib/invoice-templates";
 import { getWorkspace } from "@/lib/workspace";
+import { getErrorToastDetails } from "@/lib/utils";
 
 /**
  * Calculate due date based on payment terms
@@ -235,7 +236,8 @@ export default function NewInvoicePage() {
         }
       } catch (err) {
         console.error("Error fetching clients:", err);
-        setError(err.message);
+        const errorDetails = getErrorToastDetails(err, "Failed to load clients");
+        setError(errorDetails.description);
       } finally {
         setLoading(false);
       }
@@ -365,10 +367,11 @@ export default function NewInvoicePage() {
       });
     } catch (err) {
       console.error("Error saving flow:", err);
+      const errorDetails = getErrorToastDetails(err, "Failed to save flow");
       toast({
         variant: "destructive",
-        title: "Failed to save flow",
-        description: err.message,
+        title: errorDetails.title,
+        description: errorDetails.description,
       });
     }
   }
@@ -410,10 +413,11 @@ export default function NewInvoicePage() {
       });
     } catch (err) {
       console.error("Error deleting flow:", err);
+      const errorDetails = getErrorToastDetails(err, "Failed to delete flow");
       toast({
         variant: "destructive",
-        title: "Failed to delete flow",
-        description: err.message,
+        title: errorDetails.title,
+        description: errorDetails.description,
       });
     } finally {
       setShowDeleteFlowDialog(false);
@@ -510,10 +514,11 @@ export default function NewInvoicePage() {
       });
     } catch (error) {
       console.error("AI rewrite error:", error);
+      const errorDetails = getErrorToastDetails(error, "Failed to rewrite");
       toast({
         variant: "destructive",
-        title: "Failed to rewrite",
-        description: error.message || "An error occurred while rewriting the content.",
+        title: errorDetails.title,
+        description: errorDetails.description,
       });
     } finally {
       setAiRewriting(false);
@@ -624,10 +629,11 @@ export default function NewInvoicePage() {
       router.push("/invoices");
     } catch (err) {
       console.error("Error creating invoice:", err);
+      const errorDetails = getErrorToastDetails(err, "Failed to create invoice");
       toast({
         variant: "destructive",
-        title: "Failed to create invoice",
-        description: err.message,
+        title: errorDetails.title,
+        description: errorDetails.description,
       });
       setSubmitting(false);
     }

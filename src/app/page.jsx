@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Plus } from "lucide-react";
 import { requireWorkspace } from "@/lib/workspace";
+import { getErrorToastDetails } from "@/lib/utils";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -68,7 +69,8 @@ export default function DashboardPage() {
       setInvoices(invoicesData.invoices || []);
     } catch (err) {
       console.error("Error fetching data:", err);
-      setError(err.message);
+      const errorDetails = getErrorToastDetails(err, "Failed to load dashboard");
+      setError(errorDetails.description);
     } finally {
       setLoading(false);
     }

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { ArrowLeft, Plus, X } from "lucide-react";
+import { getErrorToastDetails } from "@/lib/utils";
 
 export default function EditClientPage() {
   const params = useParams();
@@ -54,7 +55,8 @@ export default function EditClientPage() {
       setAdditionalEmails(data.client.additionalEmails || []);
     } catch (err) {
       console.error("Error fetching client:", err);
-      setError(err.message);
+      const errorDetails = getErrorToastDetails(err, "Failed to load client");
+      setError(errorDetails.description);
     } finally {
       setLoading(false);
     }
@@ -101,10 +103,11 @@ export default function EditClientPage() {
       router.push("/clients");
     } catch (err) {
       console.error("Error updating client:", err);
+      const errorDetails = getErrorToastDetails(err, "Failed to update client");
       toast({
         variant: "destructive",
-        title: "Failed to update client",
-        description: err.message,
+        title: errorDetails.title,
+        description: errorDetails.description,
       });
       setSubmitting(false);
     }

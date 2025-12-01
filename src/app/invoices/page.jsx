@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { requireWorkspace } from "@/lib/workspace";
 import { REMINDER_SCHEDULES } from "@/lib/invoice-templates";
+import { getErrorToastDetails } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -108,7 +109,8 @@ export default function InvoicesPage() {
       setAllInvoices(invoicesData.invoices || []);
     } catch (err) {
       console.error("Error fetching data:", err);
-      setError(err.message);
+      const errorDetails = getErrorToastDetails(err, "Failed to load invoices");
+      setError(errorDetails.description);
     } finally {
       setLoading(false);
     }
@@ -181,10 +183,14 @@ export default function InvoicesPage() {
       setInvoiceToDelete(null);
     } catch (err) {
       console.error("Error deleting invoice:", err);
+      const errorDetails = getErrorToastDetails(
+        err,
+        "Failed to delete invoice"
+      );
       toast({
         variant: "destructive",
-        title: "Failed to delete invoice",
-        description: err.message,
+        title: errorDetails.title,
+        description: errorDetails.description,
       });
     }
   }
@@ -214,10 +220,14 @@ export default function InvoicesPage() {
       router.push(`/invoices/${data.invoice.id}/edit`);
     } catch (err) {
       console.error("Error duplicating invoice:", err);
+      const errorDetails = getErrorToastDetails(
+        err,
+        "Failed to duplicate invoice"
+      );
       toast({
         variant: "destructive",
-        title: "Failed to duplicate invoice",
-        description: err.message,
+        title: errorDetails.title,
+        description: errorDetails.description,
       });
     }
   }
@@ -253,10 +263,14 @@ export default function InvoicesPage() {
       });
     } catch (err) {
       console.error("Error marking invoice as paid:", err);
+      const errorDetails = getErrorToastDetails(
+        err,
+        "Failed to mark invoice as paid"
+      );
       toast({
         variant: "destructive",
-        title: "Failed to mark invoice as paid",
-        description: err.message,
+        title: errorDetails.title,
+        description: errorDetails.description,
       });
     }
   }
@@ -451,11 +465,14 @@ export default function InvoicesPage() {
         setSelectedTemplateId("");
       } catch (error) {
         console.error("Error resending email:", error);
+        const errorDetails = getErrorToastDetails(error, "Resend failed");
         toast({
           variant: "destructive",
-          title: "Resend failed",
+          title: errorDetails.title,
           description:
-            "We couldn't resend this email. Your invoice is unchanged. Check the error details on this invoice.",
+            errorDetails.title === "You're offline"
+              ? errorDetails.description
+              : "We couldn't resend this email. Your invoice is unchanged. Check the error details on this invoice.",
         });
       } finally {
         setResending(false);

@@ -52,6 +52,7 @@ import {
   normalizeTemplates,
   rewriteWithAI,
 } from "@/lib/invoice-templates";
+import { getErrorToastDetails } from "@/lib/utils";
 
 export default function EditInvoicePage() {
   const params = useParams();
@@ -230,7 +231,8 @@ export default function EditInvoicePage() {
       setClients(clientsData.clients || []);
     } catch (err) {
       console.error("Error fetching data:", err);
-      setError(err.message);
+      const errorDetails = getErrorToastDetails(err, "Failed to load invoice");
+      setError(errorDetails.description);
     } finally {
       setLoading(false);
     }
@@ -356,10 +358,11 @@ export default function EditInvoicePage() {
       });
     } catch (err) {
       console.error("Error saving flow:", err);
+      const errorDetails = getErrorToastDetails(err, "Failed to save flow");
       toast({
         variant: "destructive",
-        title: "Failed to save flow",
-        description: err.message,
+        title: errorDetails.title,
+        description: errorDetails.description,
       });
     }
   }
@@ -401,10 +404,11 @@ export default function EditInvoicePage() {
       });
     } catch (err) {
       console.error("Error deleting flow:", err);
+      const errorDetails = getErrorToastDetails(err, "Failed to delete flow");
       toast({
         variant: "destructive",
-        title: "Failed to delete flow",
-        description: err.message,
+        title: errorDetails.title,
+        description: errorDetails.description,
       });
     } finally {
       setShowDeleteFlowDialog(false);
@@ -501,10 +505,11 @@ export default function EditInvoicePage() {
       });
     } catch (error) {
       console.error("AI rewrite error:", error);
+      const errorDetails = getErrorToastDetails(error, "Failed to rewrite");
       toast({
         variant: "destructive",
-        title: "Failed to rewrite",
-        description: error.message || "An error occurred while rewriting the content.",
+        title: errorDetails.title,
+        description: errorDetails.description,
       });
     } finally {
       setAiRewriting(false);
@@ -590,10 +595,11 @@ export default function EditInvoicePage() {
       router.push("/invoices");
     } catch (err) {
       console.error("Error sending invoice:", err);
+      const errorDetails = getErrorToastDetails(err, "Failed to send invoice");
       toast({
         variant: "destructive",
-        title: "Failed to send invoice",
-        description: err.message,
+        title: errorDetails.title,
+        description: errorDetails.description,
       });
       setSending(false);
     }
@@ -675,10 +681,11 @@ export default function EditInvoicePage() {
       router.push("/invoices");
     } catch (err) {
       console.error("Error updating invoice:", err);
+      const errorDetails = getErrorToastDetails(err, "Failed to update invoice");
       toast({
         variant: "destructive",
-        title: "Failed to update invoice",
-        description: err.message,
+        title: errorDetails.title,
+        description: errorDetails.description,
       });
       setSubmitting(false);
     }

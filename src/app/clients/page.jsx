@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { requireWorkspace } from "@/lib/workspace";
+import { getErrorToastDetails } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -91,7 +92,8 @@ export default function ClientsPage() {
       setClients(data.clients || []);
     } catch (err) {
       console.error("Error fetching clients:", err);
-      setError(err.message);
+      const errorDetails = getErrorToastDetails(err, "Failed to load clients");
+      setError(errorDetails.description);
     } finally {
       setLoading(false);
     }
@@ -128,10 +130,11 @@ export default function ClientsPage() {
       setClientToDelete(null);
     } catch (err) {
       console.error("Error deleting client:", err);
+      const errorDetails = getErrorToastDetails(err, "Failed to delete client");
       toast({
         variant: "destructive",
-        title: "Failed to delete client",
-        description: err.message,
+        title: errorDetails.title,
+        description: errorDetails.description,
       });
     }
   }
@@ -193,7 +196,7 @@ export default function ClientsPage() {
               Manage your client contacts
             </p>
           </div>
-          
+
           <Button
             asChild
             variant="accent"
