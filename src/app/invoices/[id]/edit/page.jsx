@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -32,7 +32,15 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Sparkles, Undo2, Check, Plus, X } from "lucide-react";
+import { ArrowLeft, Sparkles, Undo2, Check, Plus, X, ChevronDown, Trash2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   REMINDER_SCHEDULES,
   TONE_OPTIONS,
@@ -101,12 +109,37 @@ export default function EditInvoicePage() {
   const [flowName, setFlowName] = useState("");
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewTab, setPreviewTab] = useState("initial");
+  const [showDeleteFlowDialog, setShowDeleteFlowDialog] = useState(false);
+  const [flowToDelete, setFlowToDelete] = useState(null);
+
+  // Track previous template ID to detect template selection changes vs tone changes
+  const prevSelectedTemplateIdRef = useRef(selectedTemplateId);
 
   // Load editor with selected template and tone
+  // IMPORTANT: Each template can have its own tone. When switching templates,
+  // we sync editorTone to that template's saved tone so the editor displays
+  // the content the user actually saved, not a different tone variant.
+  // This is critical for Email Flows to work correctly - all 4 templates
+  // (Initial, Reminder 1, Reminder 2, Reminder 3) must round-trip correctly.
   useEffect(() => {
     const template = templates.find((t) => t.id === selectedTemplateId);
     if (template) {
-      const variant = getToneVariant(template, editorTone);
+      // Determine which tone to use for loading content
+      let toneToUse = editorTone;
+      
+      // If template selection changed (not just tone toggle clicked),
+      // sync editorTone to the template's saved tone
+      const templateChanged = prevSelectedTemplateIdRef.current !== selectedTemplateId;
+      if (templateChanged) {
+        prevSelectedTemplateIdRef.current = selectedTemplateId;
+        if (template.tone) {
+          toneToUse = template.tone;
+          // Update the tone toggle to reflect the template's saved tone
+          setEditorTone(template.tone);
+        }
+      }
+      
+      const variant = getToneVariant(template, toneToUse);
       setEditorSubject(variant.subject);
       setEditorBody(variant.body);
       setAiRewritten(false);
@@ -256,6 +289,10 @@ export default function EditInvoicePage() {
     setShowFlowApplyDialog(true);
   }
 
+  // Apply a saved email flow to this invoice
+  // IMPORTANT: Each template in the flow has its own tone, subject, and body.
+  // All 4 templates must be restored exactly as saved - the flow stores the
+  // complete state of each template independently.
   function confirmFlowApply() {
     if (!pendingFlow) return;
 
@@ -264,6 +301,14 @@ export default function EditInvoicePage() {
     setSavedTemplates(pendingFlow.templates);
     setCurrentFlow(pendingFlow.id);
     setSelectedTemplateId("initial");
+    
+    // Sync editorTone to the initial template's tone so the editor
+    // displays the correct content immediately after applying the flow
+    const initialTemplate = pendingFlow.templates.find(t => t.id === "initial");
+    if (initialTemplate && initialTemplate.tone) {
+      setEditorTone(initialTemplate.tone);
+    }
+    
     setShowFlowApplyDialog(false);
     setPendingFlow(null);
   }
@@ -273,7 +318,11 @@ export default function EditInvoicePage() {
     setPendingFlow(null);
   }
 
-  // Save current flow
+  // Save the current email flow (all templates) as a reusable named flow
+  // IMPORTANT: savedTemplates contains ALL templates (Initial + all Reminders),
+  // each with their own subject, body, tone, and toneVariants. Each template
+  // is independent - saving one template should never affect others.
+  // When this flow is applied later, ALL templates must be restored exactly.
   async function handleSaveFlow() {
     if (!flowName.trim()) return;
 
@@ -281,7 +330,7 @@ export default function EditInvoicePage() {
       const flowData = {
         name: flowName.trim(),
         schedule: reminderSchedule,
-        templates: savedTemplates,
+        templates: savedTemplates, // Contains all 4 templates with full state
       };
 
       const res = await fetch("/api/email-flows", {
@@ -315,6 +364,59 @@ export default function EditInvoicePage() {
     }
   }
 
+  // Handle delete flow button click - shows confirmation dialog
+  function handleDeleteFlowClick(e, flow) {
+    e.stopPropagation();
+    e.preventDefault();
+    setFlowToDelete(flow);
+    setShowDeleteFlowDialog(true);
+  }
+
+  // Confirm and execute flow deletion
+  async function confirmDeleteFlow() {
+    if (!flowToDelete) return;
+
+    try {
+      const res = await fetch(`/api/email-flows/${flowToDelete.id}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Failed to delete flow");
+      }
+
+      // Remove flow from local state
+      setSavedFlows(savedFlows.filter((f) => f.id !== flowToDelete.id));
+
+      // If the deleted flow was currently selected, switch to custom
+      if (currentFlow === flowToDelete.id) {
+        setCurrentFlow("custom");
+      }
+
+      toast({
+        title: "Flow deleted",
+        description: `"${flowToDelete.name}" has been deleted.`,
+      });
+    } catch (err) {
+      console.error("Error deleting flow:", err);
+      toast({
+        variant: "destructive",
+        title: "Failed to delete flow",
+        description: err.message,
+      });
+    } finally {
+      setShowDeleteFlowDialog(false);
+      setFlowToDelete(null);
+    }
+  }
+
+  function cancelDeleteFlow() {
+    setShowDeleteFlowDialog(false);
+    setFlowToDelete(null);
+  }
+
   // Save current template for the current tone
   function handleSaveTemplate() {
     const updatedTemplates = templates.map((t) => {
@@ -322,8 +424,9 @@ export default function EditInvoicePage() {
         // Update the tone variant and sync canonical fields
         return updateToneVariant(t, editorTone, editorSubject, editorBody);
       }
-      // For other templates, ensure canonical fields reflect current tone
-      return syncCanonicalFields(t, editorTone);
+      // For other templates, keep their existing canonical fields and tone
+      // Each template maintains its own tone from when it was individually saved
+      return t;
     });
 
     setTemplates(updatedTemplates);
@@ -440,8 +543,9 @@ export default function EditInvoicePage() {
   }
 
   function handlePreviewAndSend() {
-    // Sync all templates' canonical fields with the current editor tone before preview
-    const syncedTemplates = templates.map((t) => syncCanonicalFields(t, editorTone));
+    // Ensure each template's canonical fields are synced with its own tone
+    // This preserves each template's individually saved tone
+    const syncedTemplates = templates.map((t) => syncCanonicalFields(t, t.tone || editorTone));
     setSavedTemplates(syncedTemplates);
     
     setShowPreviewModal(true);
@@ -544,7 +648,7 @@ export default function EditInvoicePage() {
       // Only include other fields if provided
       if (paymentLink) payload.paymentLink = paymentLink;
       if (dueDate) payload.dueDate = dueDate;
-      if (emailFlow) payload.emailFlow = emailFlow;
+      if (currentFlow) payload.emailFlow = currentFlow;
       if (reminderSchedule) payload.reminderSchedule = reminderSchedule;
       if (savedTemplates) payload.templates = savedTemplates;
       
@@ -813,19 +917,51 @@ export default function EditInvoicePage() {
               <div className="space-y-2">
                 <Label htmlFor="emailFlow">Email flow</Label>
                 <div className="flex gap-2">
-                  <Select value={currentFlow} onValueChange={handleFlowChange}>
-                    <SelectTrigger id="emailFlow" className="flex-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="custom">Custom (unsaved)</SelectItem>
-                      {savedFlows.map((flow) => (
-                        <SelectItem key={flow.id} value={flow.id}>
-                          {flow.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="flex-1 justify-between font-normal"
+                        id="emailFlow"
+                      >
+                        <span>
+                          {currentFlow === "custom"
+                            ? "Custom (unsaved)"
+                            : savedFlows.find((f) => f.id === currentFlow)?.name ||
+                              "Select flow"}
+                        </span>
+                        <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                      <DropdownMenuRadioGroup
+                        value={currentFlow}
+                        onValueChange={handleFlowChange}
+                      >
+                        <DropdownMenuRadioItem value="custom">
+                          Custom (unsaved)
+                        </DropdownMenuRadioItem>
+                        {savedFlows.length > 0 && <DropdownMenuSeparator />}
+                        {savedFlows.map((flow) => (
+                          <DropdownMenuRadioItem
+                            key={flow.id}
+                            value={flow.id}
+                            className="pr-10"
+                          >
+                            <span className="flex-1 truncate">{flow.name}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteFlowClick(e, flow)}
+                              className="absolute right-2 p-1 rounded hover:bg-destructive/10 transition-colors"
+                              title="Delete flow"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                            </button>
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button
                     type="button"
                     variant="outline"
@@ -1100,6 +1236,28 @@ export default function EditInvoicePage() {
             </Button>
             <Button onClick={handleSaveFlow} disabled={!flowName.trim()}>
               Save flow
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Flow Confirmation Dialog */}
+      <Dialog open={showDeleteFlowDialog} onOpenChange={setShowDeleteFlowDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete email flow?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &quot;{flowToDelete?.name}&quot;?
+              This cannot be undone. Existing invoices using this flow will not
+              be affected.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelDeleteFlow}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteFlow}>
+              Delete flow
             </Button>
           </DialogFooter>
         </DialogContent>

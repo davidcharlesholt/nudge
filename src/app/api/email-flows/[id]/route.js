@@ -1,0 +1,46 @@
+import clientPromise from "@/lib/db";
+import { ObjectId } from "mongodb";
+
+const DEMO_USER_ID = "demo-user";
+
+export async function DELETE(_req, context) {
+  try {
+    // Await params in case it's a Promise (Next.js 14/15 compatibility)
+    const params = await Promise.resolve(context.params);
+    const { id } = params;
+
+    // Validate ObjectId
+    if (!id || !ObjectId.isValid(id)) {
+      return Response.json(
+        { ok: false, error: "Invalid flow ID" },
+        { status: 400 }
+      );
+    }
+
+    const client = await clientPromise;
+    const db = client.db(process.env.MONGODB_DB || "nudge");
+
+    // Delete the flow (only if it belongs to the user)
+    const result = await db.collection("email_flows").deleteOne({
+      _id: new ObjectId(id),
+      userId: DEMO_USER_ID,
+    });
+
+    if (result.deletedCount === 0) {
+      return Response.json(
+        { ok: false, error: "Flow not found or already deleted" },
+        { status: 404 }
+      );
+    }
+
+    // Note: We intentionally do NOT update invoices that reference this flow.
+    // Invoices store their own copy of templates, so deleting a flow
+    // only removes the saved preset - it doesn't affect existing invoices.
+
+    return Response.json({ ok: true, message: "Flow deleted successfully" });
+  } catch (error) {
+    console.error("DELETE /api/email-flows/[id] error:", error);
+    return Response.json({ ok: false, error: error.message }, { status: 500 });
+  }
+}
+
