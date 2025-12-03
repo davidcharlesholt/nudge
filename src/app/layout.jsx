@@ -10,6 +10,7 @@ import Header from "@/components/Header";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 import { Inter } from "next/font/google";
+import { headers } from "next/headers";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,7 +19,17 @@ export const metadata = {
   description: "Friendly invoice nudges for freelancers",
 };
 
-export default function RootLayout({ children }) {
+// Public routes that don't require authentication
+const publicRoutes = ["/account-deleted", "/sign-in", "/sign-up"];
+
+export default async function RootLayout({ children }) {
+  // Get the current path from headers
+  const headersList = await headers();
+  const pathname = headersList.get("x-pathname") || "";
+  
+  // Check if current route is public (allow account-deleted page without auth)
+  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
+
   return (
     <ClerkProvider
       signInUrl="/sign-in"
@@ -45,7 +56,13 @@ export default function RootLayout({ children }) {
             </main>
           </SignedIn>
           <SignedOut>
-            <RedirectToSignIn />
+            {isPublicRoute ? (
+              <main className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
+                {children}
+              </main>
+            ) : (
+              <RedirectToSignIn />
+            )}
           </SignedOut>
           <Toaster />
         </body>
