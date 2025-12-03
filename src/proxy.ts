@@ -10,7 +10,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/clerk/webhook(.*)", // Clerk webhooks (protected by signature verification)
 ]);
 
-export default clerkMiddleware(async (auth, request) => {
+export const proxy = clerkMiddleware(async (auth, request) => {
   // Add pathname to headers for layout to access
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", request.nextUrl.pathname);
