@@ -130,17 +130,17 @@ export const RATE_LIMITS = {
     max: 100,
     prefix: 'std',
   },
-  // AI endpoints - more restrictive (15 per minute)
+  // AI endpoints - more restrictive (2 per minute for testing)
   ai: {
     windowMs: 60 * 1000,
-    max: 15,
+    max: 2,
     prefix: 'ai',
     message: "Too many requests. Please slow down.",
   },
-  // Email sending - 10 per minute per user (prevents abuse)
+  // Email sending - 3 per minute per user (for testing)
   email: {
     windowMs: 60 * 1000,
-    max: 10,
+    max: 3,
     prefix: 'email',
     message: "Too many requests. Please slow down.",
   },
