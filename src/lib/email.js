@@ -51,7 +51,7 @@ export async function sendTestEmail(to, fromName) {
 
   // Check for Resend error
   if (res?.error) {
-    console.error("Resend email error:", res.error);
+    console.error("Failed to send test email");
     throw new Error(res.error.message || "Failed to send email via Resend");
   }
 
@@ -166,7 +166,7 @@ export async function sendInvoiceEmail({
 
   // Resend SDK doesn't throw on errors - it returns them in res.error
   if (res?.error) {
-    console.error("Resend email error:", res.error);
+    console.error("Failed to send invoice email");
     throw new Error(res.error.message || "Failed to send email via Resend");
   }
 

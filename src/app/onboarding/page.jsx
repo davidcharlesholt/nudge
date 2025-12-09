@@ -51,7 +51,7 @@ export default function OnboardingPage() {
           router.push("/");
         }
       } catch (err) {
-        console.error("Error checking workspace:", err);
+        console.error("Error checking workspace");
       } finally {
         setCheckingWorkspace(false);
       }
@@ -121,7 +121,7 @@ export default function OnboardingPage() {
       // Success! Redirect to specified page
       router.push(redirectTo);
     } catch (err) {
-      console.error("Error creating workspace:", err);
+      console.error("Error creating workspace");
       setError("An error occurred. Please try again.");
       setLoading(false);
     }

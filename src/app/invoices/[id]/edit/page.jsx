@@ -230,7 +230,7 @@ export default function EditInvoicePage() {
 
       setClients(clientsData.clients || []);
     } catch (err) {
-      console.error("Error fetching data:", err);
+      console.error("Error fetching data");
       const errorDetails = getErrorToastDetails(err, "Failed to load invoice");
       setError(errorDetails.description);
     } finally {
@@ -246,7 +246,7 @@ export default function EditInvoicePage() {
         setSavedFlows(data.flows || []);
       }
     } catch (err) {
-      console.error("Error loading flows:", err);
+      console.error("Error loading flows");
     }
   }
 
@@ -357,7 +357,7 @@ export default function EditInvoicePage() {
         description: `"${flowName}" has been saved successfully.`,
       });
     } catch (err) {
-      console.error("Error saving flow:", err);
+      console.error("Error saving flow");
       const errorDetails = getErrorToastDetails(err, "Failed to save flow");
       toast({
         variant: "destructive",
@@ -403,7 +403,7 @@ export default function EditInvoicePage() {
         description: `"${flowToDelete.name}" has been deleted.`,
       });
     } catch (err) {
-      console.error("Error deleting flow:", err);
+      console.error("Error deleting flow");
       const errorDetails = getErrorToastDetails(err, "Failed to delete flow");
       toast({
         variant: "destructive",
@@ -504,7 +504,7 @@ export default function EditInvoicePage() {
         description: "AI has successfully rewritten your email.",
       });
     } catch (error) {
-      console.error("AI rewrite error:", error);
+      console.error("AI rewrite error");
       const errorDetails = getErrorToastDetails(error, "Failed to rewrite");
       toast({
         variant: "destructive",
@@ -594,7 +594,7 @@ export default function EditInvoicePage() {
 
       router.push("/invoices");
     } catch (err) {
-      console.error("Error sending invoice:", err);
+      console.error("Error sending invoice");
       const errorDetails = getErrorToastDetails(err, "Failed to send invoice");
       toast({
         variant: "destructive",
@@ -680,7 +680,7 @@ export default function EditInvoicePage() {
 
       router.push("/invoices");
     } catch (err) {
-      console.error("Error updating invoice:", err);
+      console.error("Error updating invoice");
       const errorDetails = getErrorToastDetails(err, "Failed to update invoice");
       toast({
         variant: "destructive",

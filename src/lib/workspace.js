@@ -13,7 +13,7 @@ export async function getWorkspace() {
     
     return null;
   } catch (error) {
-    console.error("Error fetching workspace:", error);
+    console.error("Error fetching workspace");
     return null;
   }
 }

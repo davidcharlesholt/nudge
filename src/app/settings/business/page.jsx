@@ -51,7 +51,7 @@ export default function BusinessSettingsPage() {
           setLastUpdated(workspace.updatedAt ? new Date(workspace.updatedAt) : null);
         }
       } catch (err) {
-        console.error("Error loading workspace:", err);
+        console.error("Error loading workspace");
         setError("Failed to load workspace settings");
       } finally {
         setLoading(false);
@@ -94,7 +94,7 @@ export default function BusinessSettingsPage() {
       // Refresh the page to update header workspace name
       router.refresh();
     } catch (err) {
-      console.error("Error updating workspace:", err);
+      console.error("Error updating workspace");
       const errorDetails = getErrorToastDetails(err, "Failed to save");
       setError(errorDetails.description);
       toast({

@@ -82,7 +82,7 @@ export async function POST(_req, context) {
       },
     });
   } catch (error) {
-    console.error("POST /api/invoices/[id]/duplicate error:", error);
+    console.error("POST /api/invoices/[id]/duplicate error");
     return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to duplicate invoice") }, { status: 500 });
   }
 }

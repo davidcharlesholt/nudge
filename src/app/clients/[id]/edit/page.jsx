@@ -54,7 +54,7 @@ export default function EditClientPage() {
       setCompanyName(data.client.companyName || "");
       setAdditionalEmails(data.client.additionalEmails || []);
     } catch (err) {
-      console.error("Error fetching client:", err);
+      console.error("Error fetching client");
       const errorDetails = getErrorToastDetails(err, "Failed to load client");
       setError(errorDetails.description);
     } finally {
@@ -102,7 +102,7 @@ export default function EditClientPage() {
       // Redirect back to clients list
       router.push("/clients");
     } catch (err) {
-      console.error("Error updating client:", err);
+      console.error("Error updating client");
       const errorDetails = getErrorToastDetails(err, "Failed to update client");
       toast({
         variant: "destructive",

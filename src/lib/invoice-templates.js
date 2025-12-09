@@ -68,7 +68,7 @@ export { EMAIL_TEMPLATES, getTemplateDefaults };
 export function initializeTemplatesForSchedule(schedule = "standard", defaultTone = "friendly") {
   const scheduleConfig = REMINDER_SCHEDULES[schedule];
   if (!scheduleConfig) {
-    console.warn(`Unknown schedule: ${schedule}, falling back to standard`);
+    // Unknown schedule, falling back to standard
     return initializeTemplatesForSchedule("standard", defaultTone);
   }
 
@@ -205,7 +205,7 @@ export function normalizeTemplates(templates, defaultTone = "friendly") {
     }
 
     // Template is in unknown format, return as-is (should not happen)
-    console.warn("Template missing both canonical fields and toneVariants:", template.id);
+    // Template missing both canonical fields and toneVariants
     return template;
   });
 }
@@ -264,7 +264,7 @@ export async function rewriteWithAI(subject, body, tone) {
       body: data.body,
     };
   } catch (error) {
-    console.error("AI rewrite error:", error);
+    console.error("AI rewrite error");
     throw error;
   }
 }

@@ -64,7 +64,7 @@ export async function POST(req) {
       "svix-signature": svix_signature,
     });
   } catch (err) {
-    console.error("Webhook signature verification failed:", err.message);
+    console.error("Webhook signature verification failed");
     return Response.json(
       { ok: false, error: "Invalid webhook signature" },
       { status: 401 }
@@ -86,7 +86,7 @@ export async function POST(req) {
       );
     }
 
-    console.log(`Processing user.deleted webhook for user: ${userId}`);
+    // Processing user.deleted webhook
 
     try {
       const client = await clientPromise;
@@ -102,21 +102,14 @@ export async function POST(req) {
         db.collection("email_flows").deleteMany({ userId }),
       ]);
 
-      // Log the results
-      const collections = ["workspaces", "clients", "invoices", "email_flows"];
-      deleteResults.forEach((result, index) => {
-        if (result.status === "fulfilled") {
-          const count = result.value.deletedCount;
-          console.log(`Deleted ${count} document(s) from ${collections[index]} for user ${userId}`);
-        } else {
-          console.error(`Failed to delete from ${collections[index]} for user ${userId}:`, result.reason);
-        }
-      });
-
-      console.log(`Successfully processed user.deleted webhook for user: ${userId}`);
+      // Check for any failures
+      const hasFailure = deleteResults.some(r => r.status === "rejected");
+      if (hasFailure) {
+        console.error("Some collections failed to delete during user cleanup");
+      }
       return Response.json({ ok: true });
     } catch (error) {
-      console.error(`Error processing user.deleted webhook for user ${userId}:`, error);
+      console.error("Error processing user.deleted webhook");
       return Response.json(
         { ok: false, error: "Failed to delete user data" },
         { status: 500 }
@@ -125,7 +118,6 @@ export async function POST(req) {
   }
 
   // For other event types, just acknowledge receipt
-  console.log(`Received webhook event: ${eventType}`);
   return Response.json({ ok: true, received: true });
 }
 

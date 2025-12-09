@@ -57,7 +57,7 @@ export default function NewClientPage() {
       // Redirect back to clients list with query params to show success card
       router.push(`/clients?created=true&clientId=${newClientId}`);
     } catch (err) {
-      console.error("Error creating client:", err);
+      console.error("Error creating client");
       const errorDetails = getErrorToastDetails(err, "Failed to create client");
       toast({
         variant: "destructive",

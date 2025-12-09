@@ -51,7 +51,7 @@ export async function PATCH(_req, context) {
 
     return Response.json({ ok: true });
   } catch (error) {
-    console.error("PATCH /api/invoices/[id]/mark-paid error:", error);
+    console.error("PATCH /api/invoices/[id]/mark-paid error");
     return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to mark invoice as paid") }, { status: 500 });
   }
 }

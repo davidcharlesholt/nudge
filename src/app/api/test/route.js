@@ -22,7 +22,7 @@ export async function GET() {
 
     return Response.json({ ok: true, message: "Connected to MongoDB" });
   } catch (error) {
-    console.error("DB connection error:", error);
+    console.error("DB connection error");
     // Don't expose internal error details
     return Response.json({ ok: false, error: "Database connection failed" }, { status: 500 });
   }

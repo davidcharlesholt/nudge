@@ -91,7 +91,7 @@ export default function ClientsPage() {
 
       setClients(data.clients || []);
     } catch (err) {
-      console.error("Error fetching clients:", err);
+      console.error("Error fetching clients");
       const errorDetails = getErrorToastDetails(err, "Failed to load clients");
       setError(errorDetails.description);
     } finally {
@@ -129,7 +129,7 @@ export default function ClientsPage() {
       setDeleteDialogOpen(false);
       setClientToDelete(null);
     } catch (err) {
-      console.error("Error deleting client:", err);
+      console.error("Error deleting client");
       const errorDetails = getErrorToastDetails(err, "Failed to delete client");
       toast({
         variant: "destructive",

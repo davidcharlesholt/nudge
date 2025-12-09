@@ -37,7 +37,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("GET /api/workspace error:", error);
+    console.error("GET /api/workspace error");
     return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to fetch workspace") }, { status: 500 });
   }
 }
@@ -101,7 +101,7 @@ export async function POST(req) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("POST /api/workspace error:", error);
+    console.error("POST /api/workspace error");
     return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to create workspace") }, { status: 500 });
   }
 }
@@ -210,7 +210,7 @@ export async function PUT(req) {
       },
     });
   } catch (error) {
-    console.error("PUT /api/workspace error:", error);
+    console.error("PUT /api/workspace error");
     return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to update workspace") }, { status: 500 });
   }
 }

@@ -32,7 +32,7 @@ export async function GET() {
 
     return Response.json({ ok: true, flows: flowsWithStringIds });
   } catch (error) {
-    console.error("GET /api/email-flows error:", error);
+    console.error("GET /api/email-flows error");
     return Response.json({ ok: false, error: "An error occurred" }, { status: 500 });
   }
 }
@@ -91,7 +91,7 @@ export async function POST(req) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("POST /api/email-flows error:", error);
+    console.error("POST /api/email-flows error");
     return Response.json({ ok: false, error: "An error occurred" }, { status: 500 });
   }
 }

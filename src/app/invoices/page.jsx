@@ -108,7 +108,7 @@ export default function InvoicesPage() {
       setClients(clientsData.clients || []);
       setAllInvoices(invoicesData.invoices || []);
     } catch (err) {
-      console.error("Error fetching data:", err);
+      console.error("Error fetching data");
       const errorDetails = getErrorToastDetails(err, "Failed to load invoices");
       setError(errorDetails.description);
     } finally {
@@ -182,7 +182,7 @@ export default function InvoicesPage() {
       setDeleteDialogOpen(false);
       setInvoiceToDelete(null);
     } catch (err) {
-      console.error("Error deleting invoice:", err);
+      console.error("Error deleting invoice");
       const errorDetails = getErrorToastDetails(
         err,
         "Failed to delete invoice"
@@ -219,7 +219,7 @@ export default function InvoicesPage() {
       // Redirect to edit page for the new draft
       router.push(`/invoices/${data.invoice.id}/edit`);
     } catch (err) {
-      console.error("Error duplicating invoice:", err);
+      console.error("Error duplicating invoice");
       const errorDetails = getErrorToastDetails(
         err,
         "Failed to duplicate invoice"
@@ -262,7 +262,7 @@ export default function InvoicesPage() {
         description: "Invoice has been marked as paid.",
       });
     } catch (err) {
-      console.error("Error marking invoice as paid:", err);
+      console.error("Error marking invoice as paid");
       const errorDetails = getErrorToastDetails(
         err,
         "Failed to mark invoice as paid"
@@ -463,7 +463,7 @@ export default function InvoicesPage() {
         onOpenChange(false);
         setSelectedTemplateId("");
       } catch (error) {
-        console.error("Error resending email:", error);
+        console.error("Error resending email");
         const errorDetails = getErrorToastDetails(error, "Resend failed");
         toast({
           variant: "destructive",

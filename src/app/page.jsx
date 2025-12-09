@@ -68,7 +68,7 @@ export default function DashboardPage() {
       setClients(clientsData.clients || []);
       setInvoices(invoicesData.invoices || []);
     } catch (err) {
-      console.error("Error fetching data:", err);
+      console.error("Error fetching data");
       const errorDetails = getErrorToastDetails(err, "Failed to load dashboard");
       setError(errorDetails.description);
     } finally {

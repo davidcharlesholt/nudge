@@ -52,7 +52,7 @@ export async function GET(_req, context) {
       },
     });
   } catch (error) {
-    console.error("GET /api/clients/[id] error:", error);
+    console.error("GET /api/clients/[id] error");
     return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to fetch client") }, { status: 500 });
   }
 }
@@ -157,7 +157,7 @@ export async function PUT(req, context) {
       },
     });
   } catch (error) {
-    console.error("PUT /api/clients/[id] error:", error);
+    console.error("PUT /api/clients/[id] error");
     return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to update client") }, { status: 500 });
   }
 }
@@ -204,7 +204,7 @@ export async function DELETE(_req, context) {
 
     return Response.json({ ok: true });
   } catch (error) {
-    console.error("DELETE /api/clients/[id] error:", error);
+    console.error("DELETE /api/clients/[id] error");
     return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to delete client") }, { status: 500 });
   }
 }

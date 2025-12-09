@@ -32,7 +32,7 @@ export async function GET() {
 
     return Response.json({ ok: true, clients: clientsWithStringId });
   } catch (error) {
-    console.error("GET /api/clients error:", error);
+    console.error("GET /api/clients error");
     return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to fetch clients") }, { status: 500 });
   }
 }
@@ -121,7 +121,7 @@ export async function POST(req) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("POST /api/clients error:", error);
+    console.error("POST /api/clients error");
     return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to create client") }, { status: 500 });
   }
 }

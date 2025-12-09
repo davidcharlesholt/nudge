@@ -153,9 +153,8 @@ export async function POST(_req, context) {
       userEmail = user?.emailAddresses?.find(
         (email) => email.id === user.primaryEmailAddressId
       )?.emailAddress;
-      console.log("INVOICE EMAIL → userEmail from currentUser:", userEmail);
     } catch (clerkError) {
-      console.warn("Could not fetch user email via currentUser:", clerkError);
+      // Silently continue - reply-to is optional
     }
 
     // Send the reminder email
@@ -177,9 +176,9 @@ export async function POST(_req, context) {
         replyTo: userEmail,
       });
     } catch (emailError) {
-      console.error("Error sending reminder email:", emailError);
+      console.error("Error sending reminder email");
       return Response.json(
-        { ok: false, error: "Failed to send email: " + emailError.message },
+        { ok: false, error: getSafeErrorMessage(emailError, "Failed to send reminder email") },
         { status: 500 }
       );
     }
@@ -211,7 +210,7 @@ export async function POST(_req, context) {
       },
     });
   } catch (error) {
-    console.error("POST /api/invoices/[id]/send-reminder error:", error);
+    console.error("POST /api/invoices/[id]/send-reminder error");
     return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to send reminder") }, { status: 500 });
   }
 }

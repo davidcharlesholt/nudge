@@ -235,7 +235,7 @@ export default function NewInvoicePage() {
           setInitialToneSet(true);
         }
       } catch (err) {
-        console.error("Error fetching clients:", err);
+        console.error("Error fetching clients");
         const errorDetails = getErrorToastDetails(err, "Failed to load clients");
         setError(errorDetails.description);
       } finally {
@@ -251,7 +251,7 @@ export default function NewInvoicePage() {
           setSavedFlows(data.flows || []);
         }
       } catch (err) {
-        console.error("Error loading flows:", err);
+        console.error("Error loading flows");
       }
     }
 
@@ -366,7 +366,7 @@ export default function NewInvoicePage() {
         description: `"${flowName}" has been saved successfully.`,
       });
     } catch (err) {
-      console.error("Error saving flow:", err);
+      console.error("Error saving flow");
       const errorDetails = getErrorToastDetails(err, "Failed to save flow");
       toast({
         variant: "destructive",
@@ -412,7 +412,7 @@ export default function NewInvoicePage() {
         description: `"${flowToDelete.name}" has been deleted.`,
       });
     } catch (err) {
-      console.error("Error deleting flow:", err);
+      console.error("Error deleting flow");
       const errorDetails = getErrorToastDetails(err, "Failed to delete flow");
       toast({
         variant: "destructive",
@@ -513,7 +513,7 @@ export default function NewInvoicePage() {
         description: "AI has successfully rewritten your email.",
       });
     } catch (error) {
-      console.error("AI rewrite error:", error);
+      console.error("AI rewrite error");
       const errorDetails = getErrorToastDetails(error, "Failed to rewrite");
       toast({
         variant: "destructive",
@@ -628,7 +628,7 @@ export default function NewInvoicePage() {
 
       router.push("/invoices");
     } catch (err) {
-      console.error("Error creating invoice:", err);
+      console.error("Error creating invoice");
       const errorDetails = getErrorToastDetails(err, "Failed to create invoice");
       toast({
         variant: "destructive",

@@ -261,7 +261,7 @@ Best regards,
 export function getTemplateDefaults(templateKey, tone = "professional") {
   const toneTemplates = EMAIL_TEMPLATES[tone];
   if (!toneTemplates) {
-    console.warn(`Unknown tone: ${tone}, falling back to professional`);
+    // Unknown tone, falling back to professional
     return (
       EMAIL_TEMPLATES.professional[templateKey] || { subject: "", body: "" }
     );
@@ -269,7 +269,7 @@ export function getTemplateDefaults(templateKey, tone = "professional") {
 
   const template = toneTemplates[templateKey];
   if (!template) {
-    console.warn(`Unknown template key: ${templateKey} for tone: ${tone}`);
+    // Unknown template key
     return { subject: "", body: "" };
   }
 

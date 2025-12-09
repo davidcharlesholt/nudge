@@ -54,7 +54,7 @@ export async function GET(_req, context) {
       },
     });
   } catch (error) {
-    console.error("GET /api/invoices/[id] error:", error);
+    console.error("GET /api/invoices/[id] error");
     return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to fetch invoice") }, { status: 500 });
   }
 }
@@ -283,7 +283,7 @@ export async function PUT(req, context) {
       },
     });
   } catch (error) {
-    console.error("PUT /api/invoices/[id] error:", error);
+    console.error("PUT /api/invoices/[id] error");
     return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to update invoice") }, { status: 500 });
   }
 }
@@ -330,7 +330,7 @@ export async function DELETE(_req, context) {
 
     return Response.json({ ok: true });
   } catch (error) {
-    console.error("DELETE /api/invoices/[id] error:", error);
+    console.error("DELETE /api/invoices/[id] error");
     return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to delete invoice") }, { status: 500 });
   }
 }

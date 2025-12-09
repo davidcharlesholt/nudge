@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { auth } from "@clerk/nextjs/server";
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
+import { getSafeErrorMessage } from "@/lib/utils";
 
 /**
  * Extract placeholders from text
@@ -195,7 +196,7 @@ Remember to:
     try {
       rewrittenContent = JSON.parse(responseText);
     } catch (parseError) {
-      console.error("Failed to parse AI response:", parseError);
+      console.error("Failed to parse AI response");
       return Response.json(
         { ok: false, error: "AI returned invalid JSON. Please try again." },
         { status: 500 }
@@ -219,7 +220,7 @@ Remember to:
     );
 
     if (!validation.valid) {
-      console.error("AI validation failed:", validation.errors);
+      console.error("AI validation failed");
       return Response.json(
         {
           ok: false,
@@ -236,9 +237,9 @@ Remember to:
       body: rewrittenContent.body.trim(),
     });
   } catch (error) {
-    console.error("POST /api/ai/rewrite-invoice error:", error);
+    console.error("POST /api/ai/rewrite-invoice error");
     return Response.json(
-      { ok: false, error: "Failed to process AI rewrite: " + error.message },
+      { ok: false, error: getSafeErrorMessage(error, "Failed to process AI rewrite") },
       { status: 500 }
     );
   }

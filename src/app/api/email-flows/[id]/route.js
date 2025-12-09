@@ -49,7 +49,7 @@ export async function DELETE(_req, context) {
 
     return Response.json({ ok: true, message: "Flow deleted successfully" });
   } catch (error) {
-    console.error("DELETE /api/email-flows/[id] error:", error);
+    console.error("DELETE /api/email-flows/[id] error");
     return Response.json({ ok: false, error: "An error occurred" }, { status: 500 });
   }
 }

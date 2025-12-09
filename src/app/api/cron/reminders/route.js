@@ -98,9 +98,7 @@ export async function GET(req) {
         const invoiceAgeMs = now.getTime() - dueDate.getTime();
         const sixMonthsMs = 6 * 30 * 24 * 60 * 60 * 1000; // ~6 months in milliseconds
         if (invoiceAgeMs > sixMonthsMs) {
-          console.log(
-            `Skipping invoice ${invoice._id}: invoice is older than 6 months (due date: ${invoice.dueDate})`
-          );
+          // Skip old invoices silently
           continue;
         }
 
@@ -122,9 +120,7 @@ export async function GET(req) {
         });
 
         if (hasReminderSentToday) {
-          console.log(
-            `Skipping invoice ${invoice._id}: a reminder was already sent today`
-          );
+          // Already sent today - skip silently
           continue;
         }
 
@@ -173,9 +169,7 @@ export async function GET(req) {
             });
 
             if (!clientDoc) {
-              console.error(
-                `Client not found for invoice ${invoice._id}, clientId: ${invoice.clientId}`
-              );
+              console.error("Client not found for invoice");
               continue;
             }
 
@@ -197,9 +191,8 @@ export async function GET(req) {
               userEmail = user?.emailAddresses?.find(
                 (email) => email.id === user.primaryEmailAddressId
               )?.emailAddress;
-              console.log("INVOICE EMAIL → userEmail from clerkClient:", userEmail);
             } catch (clerkError) {
-              console.warn("Could not fetch user email via clerkClient:", clerkError);
+              // Silently continue - reply-to is optional
             }
 
             // Send the email
@@ -238,23 +231,13 @@ export async function GET(req) {
             );
 
             remindersSentCount++;
-
-            console.log(
-              `Sent reminder ${template.id} for invoice ${invoice._id} to ${clientDoc.email}`
-            );
           } catch (reminderError) {
-            console.error(
-              `Failed to send reminder ${template.id} for invoice ${invoice._id}:`,
-              reminderError
-            );
+            console.error("Failed to send reminder");
             // Continue with next reminder
           }
         }
       } catch (invoiceError) {
-        console.error(
-          `Failed to process invoice ${invoice._id}:`,
-          invoiceError
-        );
+        console.error("Failed to process invoice");
         // Continue with next invoice
       }
     }
@@ -265,7 +248,7 @@ export async function GET(req) {
       remindersSent: remindersSentCount,
     });
   } catch (error) {
-    console.error("GET /api/cron/reminders error:", error);
+    console.error("GET /api/cron/reminders error");
     return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to process reminders") }, { status: 500 });
   }
 }

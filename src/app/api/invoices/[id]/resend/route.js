@@ -111,9 +111,8 @@ export async function POST(_req, context) {
       userEmail = user?.emailAddresses?.find(
         (email) => email.id === user.primaryEmailAddressId
       )?.emailAddress;
-      console.log("INVOICE EMAIL → userEmail from currentUser:", userEmail);
     } catch (clerkError) {
-      console.warn("Could not fetch user email via currentUser:", clerkError);
+      // Silently continue - reply-to is optional
     }
 
     // Send the email
@@ -135,11 +134,7 @@ export async function POST(_req, context) {
         replyTo: userEmail,
       });
     } catch (emailError) {
-      console.error(
-        `Error resending email for invoice ${id}:`,
-        emailError.name,
-        emailError.message
-      );
+      console.error("Error resending email");
 
       // Update the invoice with the email error details
       const errorNow = new Date();
@@ -162,7 +157,6 @@ export async function POST(_req, context) {
           ok: false,
           error:
             "Could not resend the email. Your invoice is unchanged. Please try again or check the email configuration.",
-          emailError: emailError.message,
         },
         { status: 500 }
       );
@@ -212,7 +206,7 @@ export async function POST(_req, context) {
       invoice: updatedInvoice,
     });
   } catch (error) {
-    console.error("POST /api/invoices/[id]/resend error:", error);
+    console.error("POST /api/invoices/[id]/resend error");
     return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to resend invoice") }, { status: 500 });
   }
 }

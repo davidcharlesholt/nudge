@@ -100,9 +100,8 @@ export async function POST(_req, context) {
       userEmail = user?.emailAddresses?.find(
         (email) => email.id === user.primaryEmailAddressId
       )?.emailAddress;
-      console.log("INVOICE EMAIL → userEmail from currentUser:", userEmail);
     } catch (clerkError) {
-      console.warn("Could not fetch user email via currentUser:", clerkError);
+      // Silently continue - reply-to is optional
     }
 
     // Get initial template - create default templates if missing
@@ -111,7 +110,6 @@ export async function POST(_req, context) {
 
     if (!initialTemplate) {
       // Auto-create default templates if missing
-      console.log(`Invoice ${id} missing templates, creating defaults...`);
 
       const defaultTone = workspace?.defaultEmailTone || "friendly";
       const defaultSchedule = invoice.reminderSchedule || "standard";
@@ -133,19 +131,11 @@ export async function POST(_req, context) {
         }
       );
 
-      console.log(
-        `Created ${templates.length} default templates for invoice ${id}`
-      );
     }
 
     if (!initialTemplate) {
-      // This should never happen, but log details if it does
-      console.error(`Failed to create initial template for invoice ${id}`, {
-        invoiceId: id,
-        userId,
-        templateCount: templates.length,
-        reminderSchedule: invoice.reminderSchedule,
-      });
+      // This should never happen
+      console.error("Failed to create initial template for invoice");
 
       return Response.json(
         {
@@ -176,11 +166,7 @@ export async function POST(_req, context) {
         replyTo: userEmail, // Clients can reply directly to the user
       });
     } catch (emailError) {
-      console.error(
-        `Error sending invoice email for invoice ${id}:`,
-        emailError.name,
-        emailError.message
-      );
+      console.error("Error sending invoice email");
 
       // Update the invoice with the email error details
       const errorNow = new Date();
@@ -203,7 +189,6 @@ export async function POST(_req, context) {
           ok: false,
           error:
             "Could not send the email. The invoice remains unsent. Please try again or check the email configuration.",
-          emailError: emailError.message,
         },
         { status: 500 }
       );
@@ -239,7 +224,7 @@ export async function POST(_req, context) {
       },
     });
   } catch (error) {
-    console.error("POST /api/invoices/[id]/send error:", error);
+    console.error("POST /api/invoices/[id]/send error");
     return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to send invoice") }, { status: 500 });
   }
 }

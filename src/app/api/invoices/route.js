@@ -63,7 +63,7 @@ export async function GET(req) {
 
     return Response.json({ ok: true, invoices: invoicesWithStringIds });
   } catch (error) {
-    console.error("GET /api/invoices error:", error);
+    console.error("GET /api/invoices error");
     return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to fetch invoices") }, { status: 500 });
   }
 }
@@ -289,9 +289,8 @@ export async function POST(req) {
           userEmail = user?.emailAddresses?.find(
             (email) => email.id === user.primaryEmailAddressId
           )?.emailAddress;
-          console.log("INVOICE EMAIL → userEmail from currentUser:", userEmail);
         } catch (clerkError) {
-          console.warn("Could not fetch user email via currentUser:", clerkError);
+          // Silently continue - reply-to is optional
         }
 
         // Get initial template
@@ -315,11 +314,7 @@ export async function POST(req) {
           });
         }
       } catch (emailError) {
-        console.error(
-          `Error sending invoice email for invoice ${result.insertedId}:`,
-          emailError.name,
-          emailError.message
-        );
+        console.error("Error sending invoice email");
 
         // Update the invoice with the email error details
         const errorNow = new Date();
@@ -345,12 +340,10 @@ export async function POST(req) {
               id: result.insertedId.toString(),
               _id: result.insertedId.toString(),
               clientId: doc.clientId.toString(),
-              lastEmailErrorMessage:
-                emailError.message || "Unknown email send error",
               lastEmailErrorAt: errorNow,
               lastEmailErrorContext: "initial",
             },
-            emailError: emailError.message,
+            emailError: "Failed to send email",
             warning:
               "Invoice was created but the email could not be sent. You can try resending it later.",
           },
@@ -372,7 +365,7 @@ export async function POST(req) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("POST /api/invoices error:", error);
+    console.error("POST /api/invoices error");
     return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to create invoice") }, { status: 500 });
   }
 }
