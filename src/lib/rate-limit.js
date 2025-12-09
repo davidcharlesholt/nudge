@@ -130,19 +130,19 @@ export const RATE_LIMITS = {
     max: 100,
     prefix: 'std',
   },
-  // AI endpoints - more restrictive (10 per minute)
+  // AI endpoints - more restrictive (15 per minute)
   ai: {
     windowMs: 60 * 1000,
-    max: 10,
+    max: 15,
     prefix: 'ai',
-    message: "AI rewrite rate limit exceeded. Please wait before trying again.",
+    message: "Too many requests. Please slow down.",
   },
-  // Email sending - 20 per minute per user
+  // Email sending - 10 per minute per user (prevents abuse)
   email: {
     windowMs: 60 * 1000,
-    max: 20,
+    max: 10,
     prefix: 'email',
-    message: "Email rate limit exceeded. Please wait before sending more emails.",
+    message: "Too many requests. Please slow down.",
   },
   // Auth attempts - 10 per minute
   auth: {

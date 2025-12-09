@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { sendInvoiceEmail } from "@/lib/email";
 import { isValidUrl, isValidEmail, getSafeErrorMessage } from "@/lib/utils";
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function GET(req) {
   try {
@@ -78,6 +79,12 @@ export async function POST(req) {
         { ok: false, error: "Unauthorized" },
         { status: 401 }
       );
+    }
+
+    // Apply rate limiting for email sending (this route can send invoices)
+    const rateLimit = checkRateLimit(userId, RATE_LIMITS.email);
+    if (!rateLimit.success) {
+      return rateLimitResponse(RATE_LIMITS.email.message, rateLimit.resetTime);
     }
 
     const body = await req.json();
