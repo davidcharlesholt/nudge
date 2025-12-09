@@ -6,6 +6,33 @@ export function cn(...inputs) {
 }
 
 /**
+ * Validate email address format
+ * @param {string} email - Email address to validate
+ * @returns {boolean} True if email format is valid
+ */
+export function isValidEmail(email) {
+  if (!email || typeof email !== "string") return false;
+  // RFC 5322 compliant email regex (simplified but robust)
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email.trim()) && email.length <= 254;
+}
+
+/**
+ * Validate URL format
+ * @param {string} url - URL to validate
+ * @returns {boolean} True if URL format is valid
+ */
+export function isValidUrl(url) {
+  if (!url || typeof url !== "string") return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Format a number as currency with comma separators
  * @param {number} amount - The amount to format (in dollars, not cents)
  * @returns {string} Formatted currency string with $ prefix and comma separators
@@ -74,5 +101,38 @@ export function getErrorToastDetails(error, defaultTitle = "Something went wrong
     title: defaultTitle,
     description: error instanceof Error ? error.message : "An unexpected error occurred.",
   };
+}
+
+/**
+ * Get a safe error message for API responses
+ * Only exposes specific allowed error types to the client
+ * @param {Error|unknown} error - The error to process
+ * @param {string} genericMessage - Generic message to show for unexpected errors
+ * @returns {string} Safe error message for client response
+ */
+export function getSafeErrorMessage(error, genericMessage = "An error occurred") {
+  // List of error types that are safe to expose to clients
+  const safeErrorPatterns = [
+    /not found/i,
+    /unauthorized/i,
+    /invalid.*id/i,
+    /required/i,
+    /validation/i,
+    /already exists/i,
+    /cannot be empty/i,
+  ];
+  
+  if (error instanceof Error) {
+    const message = error.message;
+    // Only expose message if it matches a safe pattern
+    for (const pattern of safeErrorPatterns) {
+      if (pattern.test(message)) {
+        return message;
+      }
+    }
+  }
+  
+  // For unknown/unsafe errors, return generic message
+  return genericMessage;
 }
 

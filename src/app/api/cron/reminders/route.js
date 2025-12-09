@@ -40,8 +40,18 @@ export async function GET(req) {
       throw new Error("CRON_SECRET environment variable is not set");
     }
 
+    // Verify authorization - prefer Authorization header (used by Vercel Cron)
+    // but fall back to query param for backward compatibility
+    const authHeader = req.headers.get("authorization");
+    const bearerToken = authHeader?.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : null;
+    
+    // Also check query param (deprecated, but still supported)
     const { searchParams } = new URL(req.url);
-    const secret = searchParams.get("secret");
+    const querySecret = searchParams.get("secret");
+    
+    const secret = bearerToken || querySecret;
 
     if (secret !== process.env.CRON_SECRET) {
       return Response.json(

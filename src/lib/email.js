@@ -13,9 +13,33 @@ if (!process.env.RESEND_FROM_EMAIL) {
 // RESEND_FROM_NAME is optional; we'll use "Nudge" as fallback
 export const resend = new Resend(process.env.RESEND_API_KEY);
 
+/**
+ * Sanitize a string for use in email headers
+ * Removes newlines, carriage returns, and other control characters
+ * that could be used for header injection attacks
+ */
+function sanitizeForEmailHeader(str) {
+  if (!str) return "";
+  // Remove newlines, carriage returns, tabs, and other control chars
+  return str.replace(/[\r\n\t\x00-\x1f\x7f]/g, "").trim();
+}
+
+/**
+ * Escape HTML special characters to prevent XSS in email content
+ */
+function escapeHtml(str) {
+  if (!str) return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 export async function sendTestEmail(to, fromName) {
   const fallbackFromName = process.env.RESEND_FROM_NAME || "Nudge";
-  const finalFromName = fromName || fallbackFromName;
+  const finalFromName = sanitizeForEmailHeader(fromName || fallbackFromName);
   const from = `${finalFromName} <${process.env.RESEND_FROM_EMAIL}>`;
 
   const res = await resend.emails.send({
@@ -78,27 +102,39 @@ export async function sendInvoiceEmail({
     ? ""
     : dueDateObj.toLocaleDateString("en-US", { weekday: "long" });
 
-  // Replace placeholders in subject and body
-  const replacePlaceholders = (text) => {
+  // Replace placeholders in subject (sanitize for header injection)
+  const replaceSubjectPlaceholders = (text) => {
     return text
-      .replace(/\{\{clientName\}\}/g, client.fullName || "")
-      .replace(/\{\{clientFirstName\}\}/g, client.firstName || "")
+      .replace(/\{\{clientName\}\}/g, sanitizeForEmailHeader(client.fullName || ""))
+      .replace(/\{\{clientFirstName\}\}/g, sanitizeForEmailHeader(client.firstName || ""))
       .replace(/\{\{amount\}\}/g, amount)
       .replace(/\{\{dueDate\}\}/g, formattedDueDate)
-      .replace(/\{\{paymentLink\}\}/g, paymentLink)
-      .replace(/\{\{yourName\}\}/g, yourName || "")
+      .replace(/\{\{paymentLink\}\}/g, sanitizeForEmailHeader(paymentLink))
+      .replace(/\{\{yourName\}\}/g, sanitizeForEmailHeader(yourName || ""))
       .replace(/\{\{dayOfWeek\}\}/g, dayOfWeek);
   };
 
-  const finalSubject = replacePlaceholders(subject);
-  const finalBody = replacePlaceholders(body);
+  // Replace placeholders in body (escape HTML to prevent XSS)
+  const replaceBodyPlaceholders = (text) => {
+    return text
+      .replace(/\{\{clientName\}\}/g, escapeHtml(client.fullName || ""))
+      .replace(/\{\{clientFirstName\}\}/g, escapeHtml(client.firstName || ""))
+      .replace(/\{\{amount\}\}/g, escapeHtml(amount))
+      .replace(/\{\{dueDate\}\}/g, escapeHtml(formattedDueDate))
+      .replace(/\{\{paymentLink\}\}/g, escapeHtml(paymentLink))
+      .replace(/\{\{yourName\}\}/g, escapeHtml(yourName || ""))
+      .replace(/\{\{dayOfWeek\}\}/g, escapeHtml(dayOfWeek));
+  };
+
+  const finalSubject = replaceSubjectPlaceholders(subject);
+  const finalBody = replaceBodyPlaceholders(body);
 
   // Convert body to HTML (preserve line breaks)
   const htmlBody = finalBody.replace(/\n/g, "<br>");
 
-  // Build From header with company/sender name and fallbacks
+  // Build From header with company/sender name and fallbacks (sanitized)
   const fallbackFromName = process.env.RESEND_FROM_NAME || "Nudge";
-  const finalFromName = fromName || fallbackFromName;
+  const finalFromName = sanitizeForEmailHeader(fromName || fallbackFromName);
   const from = `${finalFromName} <${process.env.RESEND_FROM_EMAIL}>`;
 
   const emailData = {
@@ -110,7 +146,7 @@ export async function sendInvoiceEmail({
 
   // Add reply-to if provided (so clients can reply directly to the user)
   if (replyTo && replyTo.trim()) {
-    const replyToEmail = replyTo.trim();
+    const replyToEmail = sanitizeForEmailHeader(replyTo.trim());
     emailData.reply_to = replyToEmail;
     emailData.replyTo = replyToEmail;
     emailData.headers = {
@@ -118,13 +154,12 @@ export async function sendInvoiceEmail({
       "Reply-To": replyToEmail,
     };
   }
-  // Add CC emails if provided
+  // Add CC emails if provided (sanitize each email)
   if (ccEmails && ccEmails.length > 0) {
-    emailData.cc = ccEmails.filter((email) => email && email.trim());
+    emailData.cc = ccEmails
+      .filter((email) => email && email.trim())
+      .map((email) => sanitizeForEmailHeader(email.trim()));
   }
-
-  // Send email and check for errors
-  console.log("sendInvoiceEmail emailData:", emailData);
 
   // Send email and check for errors
   const res = await resend.emails.send(emailData);

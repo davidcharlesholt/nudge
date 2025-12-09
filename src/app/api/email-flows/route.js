@@ -1,15 +1,25 @@
 import clientPromise from "@/lib/db";
 import { ObjectId } from "mongodb";
-
-const DEMO_USER_ID = "demo-user";
+import { auth } from "@clerk/nextjs/server";
 
 export async function GET() {
   try {
+    // Get the current user's ID from Clerk
+    const { userId } = await auth();
+
+    // Return 401 if no user is authenticated
+    if (!userId) {
+      return Response.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB || "nudge");
     const flows = await db
       .collection("email_flows")
-      .find({ userId: DEMO_USER_ID })
+      .find({ userId })
       .sort({ createdAt: -1 })
       .toArray();
 
@@ -23,12 +33,23 @@ export async function GET() {
     return Response.json({ ok: true, flows: flowsWithStringIds });
   } catch (error) {
     console.error("GET /api/email-flows error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: "An error occurred" }, { status: 500 });
   }
 }
 
 export async function POST(req) {
   try {
+    // Get the current user's ID from Clerk
+    const { userId } = await auth();
+
+    // Return 401 if no user is authenticated
+    if (!userId) {
+      return Response.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { name, schedule, templates } = body;
 
@@ -48,7 +69,7 @@ export async function POST(req) {
 
     const now = new Date();
     const doc = {
-      userId: DEMO_USER_ID,
+      userId,
       name: name.trim(),
       schedule,
       templates,
@@ -71,7 +92,7 @@ export async function POST(req) {
     );
   } catch (error) {
     console.error("POST /api/email-flows error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: "An error occurred" }, { status: 500 });
   }
 }
 

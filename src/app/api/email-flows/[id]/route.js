@@ -1,10 +1,20 @@
 import clientPromise from "@/lib/db";
 import { ObjectId } from "mongodb";
-
-const DEMO_USER_ID = "demo-user";
+import { auth } from "@clerk/nextjs/server";
 
 export async function DELETE(_req, context) {
   try {
+    // Get the current user's ID from Clerk
+    const { userId } = await auth();
+
+    // Return 401 if no user is authenticated
+    if (!userId) {
+      return Response.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     // Await params in case it's a Promise (Next.js 14/15 compatibility)
     const params = await Promise.resolve(context.params);
     const { id } = params;
@@ -23,7 +33,7 @@ export async function DELETE(_req, context) {
     // Delete the flow (only if it belongs to the user)
     const result = await db.collection("email_flows").deleteOne({
       _id: new ObjectId(id),
-      userId: DEMO_USER_ID,
+      userId,
     });
 
     if (result.deletedCount === 0) {
@@ -40,7 +50,7 @@ export async function DELETE(_req, context) {
     return Response.json({ ok: true, message: "Flow deleted successfully" });
   } catch (error) {
     console.error("DELETE /api/email-flows/[id] error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: "An error occurred" }, { status: 500 });
   }
 }
 

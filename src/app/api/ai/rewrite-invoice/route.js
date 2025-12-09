@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { auth } from "@clerk/nextjs/server";
 
 /**
  * Extract placeholders from text
@@ -74,6 +75,17 @@ function validateRewrittenContent(originalSubject, originalBody, rewrittenSubjec
 
 export async function POST(req) {
   try {
+    // Get the current user's ID from Clerk
+    const { userId } = await auth();
+
+    // Return 401 if no user is authenticated
+    if (!userId) {
+      return Response.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     // Check for API key
     if (!process.env.OPENAI_API_KEY) {
       return Response.json(
