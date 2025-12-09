@@ -1,6 +1,7 @@
 import clientPromise from "@/lib/db";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { getSafeErrorMessage } from "@/lib/utils";
+import { sendBetaWelcomeEmail } from "@/lib/email";
 
 export async function GET() {
   try {
@@ -92,6 +93,28 @@ export async function POST(req) {
       { $set: workspaceDoc },
       { upsert: true }
     );
+
+    // If this is a NEW workspace (first-time onboarding), send welcome email
+    // result.upsertedId is only set when a new document was inserted
+    if (result.upsertedId) {
+      try {
+        // Fetch user's primary email from Clerk
+        const user = await currentUser();
+        const userEmail = user?.emailAddresses?.find(
+          (email) => email.id === user.primaryEmailAddressId
+        )?.emailAddress;
+
+        if (userEmail) {
+          await sendBetaWelcomeEmail({
+            to: userEmail,
+            displayName: displayName.trim(),
+          });
+        }
+      } catch (emailError) {
+        // Log the error but don't fail workspace creation
+        console.error("Failed to send welcome email");
+      }
+    }
 
     return Response.json(
       {

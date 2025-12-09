@@ -172,3 +172,65 @@ export async function sendInvoiceEmail({
 
   return res;
 }
+
+/**
+ * Send the beta welcome email to a new user
+ * @param {Object} params
+ * @param {string} params.to - Recipient email address
+ * @param {string} params.displayName - User's display name (optional, for personalization)
+ */
+export async function sendBetaWelcomeEmail({ to, displayName }) {
+  const fromName = "David from Nudge";
+  const from = `${fromName} <${process.env.RESEND_FROM_EMAIL}>`;
+
+  const subject = "Welcome to the Nudge beta 🎉";
+
+  const htmlBody = `
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <p style="margin-bottom: 16px;">Greetings fellow freelancer 🖖🏼</p>
+
+  <p style="margin-bottom: 16px;">Thanks for joining the Nudge beta — I really appreciate it.</p>
+
+  <p style="margin-bottom: 16px;">I built Nudge because I got tired of chasing clients about invoices. I'm sure you know the feeling… you finish the project, send the invoice, and then you're stuck wondering when (or if) they'll actually pay you. And writing those follow-up emails always feels weird and awkward.</p>
+
+  <p style="margin-bottom: 16px;">Nudge basically handles that part for you.</p>
+
+  <p style="margin-bottom: 16px;">You add a client, make an invoice, and if the payment doesn't come in, Nudge sends a friendly, human-sounding reminder. Nothing robotic or stiff — just the kind of message you'd normally send yourself, minus the mental load and the awkwardness.</p>
+
+  <p style="margin-bottom: 16px;"><strong>Here's the easiest way to try it:</strong></p>
+
+  <ol style="margin-bottom: 16px; padding-left: 24px;">
+    <li style="margin-bottom: 8px;">Add a real client you work with</li>
+    <li style="margin-bottom: 8px;">Create an invoice you actually plan to send (you still use your invoicing software, just copy and paste the payment link into Nudge)</li>
+    <li style="margin-bottom: 8px;">Craft the email message reminders exactly how you want (or use AI to get you started)</li>
+    <li style="margin-bottom: 8px;">Nudge will send the initial invoice and then the follow-up if they don't pay on time</li>
+  </ol>
+
+  <p style="margin-bottom: 16px;">During the beta, everything is free. I'm mostly just hoping to hear what feels good, what feels confusing, and what could be better. Anything you notice is super helpful — even tiny things.</p>
+
+  <p style="margin-bottom: 16px;"><strong>You can reply directly to this email and it comes straight to me.</strong></p>
+
+  <p style="margin-bottom: 16px;">Thanks again for giving this a shot.</p>
+
+  <p style="margin-bottom: 4px;">David</p>
+  <p style="margin: 0; color: #666;">Founder of Nudge</p>
+</div>
+  `.trim();
+
+  const emailData = {
+    from,
+    to: [to],
+    subject,
+    html: htmlBody,
+    reply_to: process.env.RESEND_FROM_EMAIL, // Replies go to David
+  };
+
+  const res = await resend.emails.send(emailData);
+
+  if (res?.error) {
+    console.error("Failed to send beta welcome email");
+    throw new Error(res.error.message || "Failed to send welcome email via Resend");
+  }
+
+  return res;
+}
