@@ -225,3 +225,5 @@ Sent invoices can still be deleted, but editing is locked:
 5. **Safety**: Backend validation prevents accidental changes
 6. **UX**: Clear visual feedback and helpful error messages
 
+
+

@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Plus } from "lucide-react";
 import { requireWorkspace } from "@/lib/workspace";
-import { getErrorToastDetails } from "@/lib/utils";
+import { getErrorToastDetails, formatCurrencyFromCents } from "@/lib/utils";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -104,8 +104,7 @@ export default function DashboardPage() {
 
   // Helper to format amount in dollars
   function formatAmount(amountCents) {
-    const dollars = (amountCents / 100).toFixed(2);
-    return `$${dollars}`;
+    return formatCurrencyFromCents(amountCents);
   }
 
   return (

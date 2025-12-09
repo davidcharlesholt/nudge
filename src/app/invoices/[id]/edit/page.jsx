@@ -52,7 +52,7 @@ import {
   normalizeTemplates,
   rewriteWithAI,
 } from "@/lib/invoice-templates";
-import { getErrorToastDetails } from "@/lib/utils";
+import { getErrorToastDetails, formatCurrency } from "@/lib/utils";
 
 export default function EditInvoicePage() {
   const params = useParams();
@@ -609,7 +609,7 @@ export default function EditInvoicePage() {
   function replacePlaceholders(text, clientData, workspaceData) {
     if (!text) return "";
 
-    const formattedAmount = `$${parseFloat(amount || 0).toFixed(2)}`;
+    const formattedAmount = `$${formatCurrency(parseFloat(amount || 0))}`;
     const dueDateObj = new Date(dueDate);
     const formattedDueDate = isNaN(dueDateObj)
       ? dueDate

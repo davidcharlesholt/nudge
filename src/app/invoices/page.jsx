@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { requireWorkspace } from "@/lib/workspace";
 import { REMINDER_SCHEDULES } from "@/lib/invoice-templates";
-import { getErrorToastDetails } from "@/lib/utils";
+import { getErrorToastDetails, formatCurrency, formatCurrencyFromCents } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -283,8 +283,7 @@ export default function InvoicesPage() {
 
   // Helper to format amount in dollars
   function formatAmount(amountCents) {
-    const dollars = (amountCents / 100).toFixed(2);
-    return `$${dollars}`;
+    return formatCurrencyFromCents(amountCents);
   }
 
   // Helper to check if invoice is past due
@@ -327,7 +326,7 @@ export default function InvoicesPage() {
   function replacePlaceholders(text, invoice, clientData, workspaceData) {
     if (!text) return "";
 
-    const formattedAmount = `$${(invoice.amountCents / 100).toFixed(2)}`;
+    const formattedAmount = `$${formatCurrency(invoice.amountCents / 100)}`;
     const dueDateObj = new Date(invoice.dueDate);
     const formattedDueDate = isNaN(dueDateObj)
       ? invoice.dueDate

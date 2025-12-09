@@ -185,3 +185,5 @@ Invoices now have an `emailTone` field:
 - ✅ Existing invoices continue to work
 - ✅ No database migration required
 
+
+

@@ -1,5 +1,6 @@
 // src/lib/email.js
 import { Resend } from "resend";
+import { formatCurrency } from "@/lib/utils";
 
 if (!process.env.RESEND_API_KEY) {
   throw new Error("Missing RESEND_API_KEY in environment");
@@ -61,8 +62,8 @@ export async function sendInvoiceEmail({
   fromName,
   replyTo,
 }) {
-  // Format amount as dollars
-  const amount = `$${(amountCents / 100).toFixed(2)}`;
+  // Format amount as dollars with comma separators
+  const amount = `$${formatCurrency(amountCents / 100)}`;
 
   // Parse and format due date
   const dueDateObj = new Date(dueDate);

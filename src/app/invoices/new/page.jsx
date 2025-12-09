@@ -52,7 +52,7 @@ import {
   rewriteWithAI,
 } from "@/lib/invoice-templates";
 import { getWorkspace } from "@/lib/workspace";
-import { getErrorToastDetails } from "@/lib/utils";
+import { getErrorToastDetails, formatCurrency } from "@/lib/utils";
 
 /**
  * Calculate due date based on payment terms
@@ -665,7 +665,7 @@ export default function NewInvoicePage() {
   function replacePlaceholders(text, clientData, workspaceData) {
     if (!text) return "";
 
-    const formattedAmount = `$${parseFloat(amount || 0).toFixed(2)}`;
+    const formattedAmount = `$${formatCurrency(parseFloat(amount || 0))}`;
     const dueDateObj = new Date(dueDate);
     const formattedDueDate = isNaN(dueDateObj)
       ? dueDate

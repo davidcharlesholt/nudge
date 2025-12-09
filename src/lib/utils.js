@@ -6,6 +6,25 @@ export function cn(...inputs) {
 }
 
 /**
+ * Format a number as currency with comma separators
+ * @param {number} amount - The amount to format (in dollars, not cents)
+ * @returns {string} Formatted currency string with $ prefix and comma separators
+ */
+export function formatCurrency(amount) {
+  return amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/**
+ * Format cents as currency with comma separators
+ * @param {number} amountCents - The amount in cents
+ * @returns {string} Formatted currency string with $ prefix and comma separators
+ */
+export function formatCurrencyFromCents(amountCents) {
+  const dollars = amountCents / 100;
+  return `$${formatCurrency(dollars)}`;
+}
+
+/**
  * Check if an error is a network/offline error
  * @param {Error|unknown} error - The error to check
  * @returns {boolean} True if this is a network/offline error
