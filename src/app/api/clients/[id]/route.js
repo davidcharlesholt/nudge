@@ -1,6 +1,7 @@
 import clientPromise from "@/lib/db";
 import { ObjectId } from "mongodb";
 import { auth } from "@clerk/nextjs/server";
+import { isValidEmail, getSafeErrorMessage } from "@/lib/utils";
 
 export async function GET(_req, context) {
   try {
@@ -52,7 +53,7 @@ export async function GET(_req, context) {
     });
   } catch (error) {
     console.error("GET /api/clients/[id] error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to fetch client") }, { status: 500 });
   }
 }
 
@@ -92,6 +93,32 @@ export async function PUT(req, context) {
       );
     }
 
+    // Validate email format
+    const trimmedEmail = email.trim();
+    if (!isValidEmail(trimmedEmail)) {
+      return Response.json(
+        { ok: false, error: "Please enter a valid email address." },
+        { status: 400 }
+      );
+    }
+
+    // Validate additional emails if provided
+    const validAdditionalEmails = [];
+    if (Array.isArray(additionalEmails)) {
+      for (const additionalEmail of additionalEmails) {
+        if (additionalEmail && additionalEmail.trim()) {
+          const trimmed = additionalEmail.trim();
+          if (!isValidEmail(trimmed)) {
+            return Response.json(
+              { ok: false, error: `Invalid additional email address: ${trimmed}` },
+              { status: 400 }
+            );
+          }
+          validAdditionalEmails.push(trimmed);
+        }
+      }
+    }
+
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB || "nudge");
 
@@ -103,11 +130,9 @@ export async function PUT(req, context) {
       firstName: trimmedFirstName,
       lastName: trimmedLastName,
       fullName,
-      email: email.trim(),
+      email: trimmedEmail,
       companyName: companyName?.trim() || "",
-      additionalEmails: Array.isArray(additionalEmails) 
-        ? additionalEmails.filter(e => e && e.trim()).map(e => e.trim())
-        : [],
+      additionalEmails: validAdditionalEmails,
       updatedAt: new Date(),
     };
 
@@ -133,7 +158,7 @@ export async function PUT(req, context) {
     });
   } catch (error) {
     console.error("PUT /api/clients/[id] error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to update client") }, { status: 500 });
   }
 }
 
@@ -180,6 +205,6 @@ export async function DELETE(_req, context) {
     return Response.json({ ok: true });
   } catch (error) {
     console.error("DELETE /api/clients/[id] error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to delete client") }, { status: 500 });
   }
 }

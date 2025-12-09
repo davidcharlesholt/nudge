@@ -5,6 +5,7 @@
 import clientPromise from "@/lib/db";
 import { clerkClient, currentUser } from "@clerk/nextjs/server";
 import { sendInvoiceEmail } from "@/lib/email";
+import { getSafeErrorMessage } from "@/lib/utils";
 
 /**
  * Helper to format a Date as "YYYY-MM-DD" in UTC
@@ -265,6 +266,6 @@ export async function GET(req) {
     });
   } catch (error) {
     console.error("GET /api/cron/reminders error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to process reminders") }, { status: 500 });
   }
 }

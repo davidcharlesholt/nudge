@@ -1,6 +1,7 @@
 import clientPromise from "@/lib/db";
 import { ObjectId } from "mongodb";
 import { auth } from "@clerk/nextjs/server";
+import { getSafeErrorMessage } from "@/lib/utils";
 
 export async function PATCH(_req, context) {
   try {
@@ -51,7 +52,7 @@ export async function PATCH(_req, context) {
     return Response.json({ ok: true });
   } catch (error) {
     console.error("PATCH /api/invoices/[id]/mark-paid error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to mark invoice as paid") }, { status: 500 });
   }
 }
 

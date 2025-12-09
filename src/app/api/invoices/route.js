@@ -2,6 +2,7 @@ import clientPromise from "@/lib/db";
 import { ObjectId } from "mongodb";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { sendInvoiceEmail } from "@/lib/email";
+import { isValidUrl, isValidEmail, getSafeErrorMessage } from "@/lib/utils";
 
 export async function GET(req) {
   try {
@@ -62,7 +63,7 @@ export async function GET(req) {
     return Response.json({ ok: true, invoices: invoicesWithStringIds });
   } catch (error) {
     console.error("GET /api/invoices error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to fetch invoices") }, { status: 500 });
   }
 }
 
@@ -153,6 +154,17 @@ export async function POST(req) {
         );
       }
 
+      // Validate paymentLink is a properly formatted URL
+      if (!isValidUrl(paymentLink.trim())) {
+        return Response.json(
+          {
+            ok: false,
+            error: "paymentLink must be a valid URL (starting with http:// or https://).",
+          },
+          { status: 400 }
+        );
+      }
+
       // Validate templates exist for sent invoices
       if (!templates || !Array.isArray(templates) || templates.length === 0) {
         return Response.json(
@@ -162,6 +174,23 @@ export async function POST(req) {
           },
           { status: 400 }
         );
+      }
+    }
+
+    // Validate ccEmails if provided
+    let validCcEmails = [];
+    if (ccEmails && Array.isArray(ccEmails)) {
+      for (const ccEmail of ccEmails) {
+        if (ccEmail && ccEmail.trim()) {
+          const trimmed = ccEmail.trim();
+          if (!isValidEmail(trimmed)) {
+            return Response.json(
+              { ok: false, error: `Invalid CC email address: ${trimmed}` },
+              { status: 400 }
+            );
+          }
+          validCcEmails.push(trimmed);
+        }
       }
     }
 
@@ -197,10 +226,8 @@ export async function POST(req) {
       doc.paymentLink = paymentLink.trim();
     }
 
-    if (ccEmails) {
-      doc.ccEmails = Array.isArray(ccEmails)
-        ? ccEmails.filter((e) => e && e.trim()).map((e) => e.trim())
-        : [];
+    if (validCcEmails.length > 0) {
+      doc.ccEmails = validCcEmails;
     }
 
     // Email configuration - only for sent invoices or if explicitly provided
@@ -339,6 +366,6 @@ export async function POST(req) {
     );
   } catch (error) {
     console.error("POST /api/invoices error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to create invoice") }, { status: 500 });
   }
 }

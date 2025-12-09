@@ -1,5 +1,6 @@
 import clientPromise from "@/lib/db";
 import { auth } from "@clerk/nextjs/server";
+import { getSafeErrorMessage } from "@/lib/utils";
 
 export async function GET() {
   try {
@@ -37,7 +38,7 @@ export async function GET() {
     });
   } catch (error) {
     console.error("GET /api/workspace error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to fetch workspace") }, { status: 500 });
   }
 }
 
@@ -101,7 +102,7 @@ export async function POST(req) {
     );
   } catch (error) {
     console.error("POST /api/workspace error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to create workspace") }, { status: 500 });
   }
 }
 
@@ -210,7 +211,7 @@ export async function PUT(req) {
     });
   } catch (error) {
     console.error("PUT /api/workspace error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to update workspace") }, { status: 500 });
   }
 }
 

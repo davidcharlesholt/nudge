@@ -1,6 +1,7 @@
 import clientPromise from "@/lib/db";
 import { ObjectId } from "mongodb";
 import { auth } from "@clerk/nextjs/server";
+import { isValidUrl, isValidEmail, getSafeErrorMessage } from "@/lib/utils";
 
 export async function GET(_req, context) {
   try {
@@ -54,7 +55,7 @@ export async function GET(_req, context) {
     });
   } catch (error) {
     console.error("GET /api/invoices/[id] error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to fetch invoice") }, { status: 500 });
   }
 }
 
@@ -155,6 +156,34 @@ export async function PUT(req, context) {
           { status: 400 }
         );
       }
+
+      // Validate paymentLink is a properly formatted URL
+      if (!isValidUrl(paymentLink.trim())) {
+        return Response.json(
+          {
+            ok: false,
+            error: "paymentLink must be a valid URL (starting with http:// or https://).",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate ccEmails if provided
+    let validCcEmails = [];
+    if (ccEmails !== undefined && Array.isArray(ccEmails)) {
+      for (const ccEmail of ccEmails) {
+        if (ccEmail && ccEmail.trim()) {
+          const trimmed = ccEmail.trim();
+          if (!isValidEmail(trimmed)) {
+            return Response.json(
+              { ok: false, error: `Invalid CC email address: ${trimmed}` },
+              { status: 400 }
+            );
+          }
+          validCcEmails.push(trimmed);
+        }
+      }
     }
 
     const client = await clientPromise;
@@ -223,9 +252,7 @@ export async function PUT(req, context) {
     }
 
     if (ccEmails !== undefined) {
-      updateDoc.ccEmails = Array.isArray(ccEmails) 
-        ? ccEmails.filter(e => e && e.trim()).map(e => e.trim())
-        : [];
+      updateDoc.ccEmails = validCcEmails;
     }
 
     // Email configuration
@@ -257,7 +284,7 @@ export async function PUT(req, context) {
     });
   } catch (error) {
     console.error("PUT /api/invoices/[id] error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to update invoice") }, { status: 500 });
   }
 }
 
@@ -304,6 +331,6 @@ export async function DELETE(_req, context) {
     return Response.json({ ok: true });
   } catch (error) {
     console.error("DELETE /api/invoices/[id] error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to delete invoice") }, { status: 500 });
   }
 }

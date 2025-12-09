@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { auth } from "@clerk/nextjs/server";
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
  * Extract placeholders from text
@@ -84,6 +85,12 @@ export async function POST(req) {
         { ok: false, error: "Unauthorized" },
         { status: 401 }
       );
+    }
+
+    // Apply rate limiting (10 requests per minute for AI endpoints)
+    const rateLimit = checkRateLimit(userId, RATE_LIMITS.ai);
+    if (!rateLimit.success) {
+      return rateLimitResponse(RATE_LIMITS.ai.message, rateLimit.resetTime);
     }
 
     // Check for API key

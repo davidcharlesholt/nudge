@@ -10,12 +10,14 @@ const isPublicRoute = createRouteMatcher([
   "/api/clerk/webhook(.*)", // Clerk webhooks (protected by signature verification)
 ]);
 
+// Main middleware for route protection and request enrichment
+// This is the single source of truth for all authentication/authorization
 export const proxy = clerkMiddleware(async (auth, request) => {
   // Add pathname to headers for layout to access
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", request.nextUrl.pathname);
 
-  // Protect non-public routes
+  // Protect non-public routes - redirects to sign-in if not authenticated
   if (!isPublicRoute(request)) {
     await auth.protect();
   }
@@ -27,6 +29,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   });
 });
 
+// Matcher config for Next.js middleware
 export const config = {
   matcher: [
     // Skip Next.js internals and all static files
@@ -35,6 +38,4 @@ export const config = {
     "/(api|trpc)(.*)",
   ],
 };
-
-
 

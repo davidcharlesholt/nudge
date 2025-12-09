@@ -3,6 +3,8 @@ import { ObjectId } from "mongodb";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { sendInvoiceEmail } from "@/lib/email";
 import { REMINDER_SCHEDULES } from "@/lib/invoice-templates";
+import { getSafeErrorMessage } from "@/lib/utils";
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function POST(_req, context) {
   try {
@@ -15,6 +17,12 @@ export async function POST(_req, context) {
         { ok: false, error: "Unauthorized" },
         { status: 401 }
       );
+    }
+
+    // Apply rate limiting for email sending
+    const rateLimit = checkRateLimit(userId, RATE_LIMITS.email);
+    if (!rateLimit.success) {
+      return rateLimitResponse(RATE_LIMITS.email.message, rateLimit.resetTime);
     }
 
     // Await params in case it's a Promise (Next.js 14/15 compatibility)
@@ -204,6 +212,6 @@ export async function POST(_req, context) {
     });
   } catch (error) {
     console.error("POST /api/invoices/[id]/send-reminder error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to send reminder") }, { status: 500 });
   }
 }

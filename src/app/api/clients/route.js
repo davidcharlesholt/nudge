@@ -1,5 +1,6 @@
 import clientPromise from "@/lib/db";
 import { auth } from "@clerk/nextjs/server";
+import { isValidEmail, getSafeErrorMessage } from "@/lib/utils";
 
 export async function GET() {
   try {
@@ -15,7 +16,7 @@ export async function GET() {
     }
 
     const client = await clientPromise;
-    const db = client.db("nudge");
+    const db = client.db(process.env.MONGODB_DB || "nudge");
     const clients = await db
       .collection("clients")
       .find({ userId })
@@ -32,7 +33,7 @@ export async function GET() {
     return Response.json({ ok: true, clients: clientsWithStringId });
   } catch (error) {
     console.error("GET /api/clients error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to fetch clients") }, { status: 500 });
   }
 }
 
@@ -60,8 +61,34 @@ export async function POST(req) {
       );
     }
 
+    // Validate email format
+    const trimmedEmail = email.trim();
+    if (!isValidEmail(trimmedEmail)) {
+      return Response.json(
+        { ok: false, error: "Please enter a valid email address." },
+        { status: 400 }
+      );
+    }
+
+    // Validate additional emails if provided
+    const validAdditionalEmails = [];
+    if (Array.isArray(additionalEmails)) {
+      for (const additionalEmail of additionalEmails) {
+        if (additionalEmail && additionalEmail.trim()) {
+          const trimmed = additionalEmail.trim();
+          if (!isValidEmail(trimmed)) {
+            return Response.json(
+              { ok: false, error: `Invalid additional email address: ${trimmed}` },
+              { status: 400 }
+            );
+          }
+          validAdditionalEmails.push(trimmed);
+        }
+      }
+    }
+
     const client = await clientPromise;
-    const db = client.db("nudge");
+    const db = client.db(process.env.MONGODB_DB || "nudge");
 
     const trimmedFirstName = firstName.trim();
     const trimmedLastName = lastName?.trim() || "";
@@ -73,11 +100,9 @@ export async function POST(req) {
       firstName: trimmedFirstName,
       lastName: trimmedLastName,
       fullName,
-      email: email.trim(),
+      email: trimmedEmail,
       companyName: companyName?.trim() || "",
-      additionalEmails: Array.isArray(additionalEmails) 
-        ? additionalEmails.filter(e => e && e.trim()).map(e => e.trim())
-        : [],
+      additionalEmails: validAdditionalEmails,
       createdAt: now,
       updatedAt: now,
     };
@@ -97,7 +122,7 @@ export async function POST(req) {
     );
   } catch (error) {
     console.error("POST /api/clients error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to create client") }, { status: 500 });
   }
 }
 

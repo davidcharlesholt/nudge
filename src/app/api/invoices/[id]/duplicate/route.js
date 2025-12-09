@@ -1,6 +1,7 @@
 import clientPromise from "@/lib/db";
 import { ObjectId } from "mongodb";
 import { auth } from "@clerk/nextjs/server";
+import { getSafeErrorMessage } from "@/lib/utils";
 
 export async function POST(_req, context) {
   try {
@@ -82,7 +83,7 @@ export async function POST(_req, context) {
     });
   } catch (error) {
     console.error("POST /api/invoices/[id]/duplicate error:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: false, error: getSafeErrorMessage(error, "Failed to duplicate invoice") }, { status: 500 });
   }
 }
 
